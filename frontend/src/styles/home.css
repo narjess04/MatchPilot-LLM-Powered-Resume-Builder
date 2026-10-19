@@ -1,0 +1,59 @@
+.home { min-height: 100vh; display: flex; flex-direction: column; font-size: 16px; line-height: 1.6; }
+.home .wrap { width: 100%; max-width: 1160px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 720px) { .home .wrap { padding: 0 32px; } }
+.home .btn { padding: 13px 22px; font-size: 15px; }
+
+/* Nav */
+.home .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+.home .logo { display: flex; align-items: center; gap: 10px; font-family: "Bricolage Grotesque"; font-weight: 800; font-size: 20px; }
+.home .nav-right { display: flex; align-items: center; gap: 10px; }
+.home .nav-right .icon-btn { width: 40px; height: 40px; }
+.home .nav-right .btn { padding: 10px 18px; }
+@media (max-width: 480px) { .home .nav-right .btn { display: none; } }
+
+/* Hero */
+.hero { flex: 1; display: flex; align-items: center; padding: 40px 0 72px; }
+.hero-grid { display: grid; gap: 48px; align-items: center; }
+@media (min-width: 960px) { .hero-grid { grid-template-columns: 1fr 1.1fr; } }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 6px 12px; border-radius: 999px; }
+.eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.hero h1 { font-size: clamp(38px, 6vw, 64px); font-weight: 800; margin: 20px 0 18px; line-height: 1.1; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lead { font-size: 18px; color: var(--muted); max-width: 520px; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero-proof { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 28px; font-size: 14px; color: var(--muted); }
+.hero-proof span { display: inline-flex; align-items: center; gap: 6px; }
+.hero-proof svg { width: 16px; height: 16px; color: var(--accent); }
+
+/* Video card */
+.video-shell { position: relative; }
+.video-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+.video-bar { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.video-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.video-bar span { margin-left: 10px; font-size: 12px; color: var(--muted); }
+.video-frame { position: relative; aspect-ratio: 16 / 10; background: var(--surface-2); }
+.video-frame video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.video-placeholder {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  text-align: center; padding: 24px; color: var(--muted); font-size: 14px;
+  background:
+    radial-gradient(circle at 30% 30%, var(--accent-soft), transparent 55%),
+    radial-gradient(circle at 75% 70%, var(--signal-soft), transparent 50%),
+    var(--surface-2);
+}
+.play { width: 68px; height: 68px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: var(--shadow); }
+.play svg { width: 26px; height: 26px; margin-left: 4px; }
+.video-placeholder code { background: var(--surface); border: 1px solid var(--line); padding: 2px 8px; border-radius: 6px; font-size: 13px; color: var(--ink); }
+
+.float-badge { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.float-badge strong { display: block; font-size: 18px; font-family: "Bricolage Grotesque"; }
+.float-badge small { color: var(--muted); }
+.badge-score { left: -14px; bottom: -22px; }
+.badge-ats { right: -10px; top: 56px; }
+.mini-ring { width: 42px; height: 42px; }
+@media (max-width: 600px) { .badge-score { left: 8px; } .badge-ats { right: 8px; top: auto; bottom: -22px; } }
+
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.in { opacity: 1; transform: none; }
+.reveal + .reveal { transition-delay: .12s; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }

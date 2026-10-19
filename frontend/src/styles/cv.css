@@ -1,0 +1,59 @@
+/* CV sheet (A4 @ 96dpi) — ATS: single column, real text, standard headings */
+.sheet { width: 794px; min-height: 1123px; background: #fff; color: #1b1d22; padding: 56px 64px; font: 13.5px/1.5 Calibri, "Segoe UI", Arial, sans-serif; --acc: #0f6e63; }
+.sheet h1 { margin: 0; font: 700 28px/1.2 Calibri, "Segoe UI", Arial, sans-serif; letter-spacing: 0; }
+.sheet h2 { font: 700 13px/1.3 Calibri, "Segoe UI", Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; margin: 20px 0 8px; }
+.cv-head { display: flex; gap: 24px; align-items: center; }
+.cv-head .who { flex: 1; }
+.cv-title { font-size: 15px; color: #4b4f58; margin-top: 2px; }
+.cv-contact { font-size: 12.5px; color: #4b4f58; margin-top: 6px; }
+.cv-photo { order: 2; width: 96px; height: 96px; object-fit: cover; }
+.cv-entry { margin-bottom: 10px; }
+.cv-row { display: flex; justify-content: space-between; gap: 14px; }
+.cv-row span { color: #5a5f6b; font-size: 12.5px; white-space: nowrap; }
+.cv-org { color: #4b4f58; font-style: italic; }
+.sheet ul { margin: 3px 0 0; padding-left: 18px; }
+.sheet li { margin-bottom: 1px; }
+.sheet p { margin: 0; }
+
+.tpl-classic .cv-head { flex-direction: column; text-align: center; gap: 0; }
+.tpl-classic h2 { border-bottom: 1.5px solid #1b1d22; padding-bottom: 3px; }
+
+.tpl-modern h1 { color: var(--acc); font-size: 30px; }
+.tpl-modern h2 { color: var(--acc); border-left: 4px solid var(--acc); padding-left: 10px; }
+.tpl-modern .cv-head { padding-bottom: 14px; border-bottom: 1px solid #e3e3e3; }
+.tpl-modern .cv-photo { border-radius: 50%; }
+
+.tpl-compact { padding: 40px 48px; font-size: 12.5px; line-height: 1.42; }
+.tpl-compact h1 { font-size: 24px; }
+.tpl-compact h2 { font-size: 12px; margin: 14px 0 6px; border-bottom: 1px solid #b9b9b9; padding-bottom: 2px; }
+.tpl-compact .cv-entry { margin-bottom: 6px; }
+
+.tpl-elegant { font-family: Georgia, "Times New Roman", serif; }
+.tpl-elegant h1 { font: 400 32px/1.15 Georgia, "Times New Roman", serif; letter-spacing: .02em; }
+.tpl-elegant h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; letter-spacing: .18em; color: var(--acc); border-bottom: 1px solid var(--acc); padding-bottom: 4px; margin-top: 24px; }
+.tpl-elegant .cv-photo { border-radius: 8px; width: 90px; height: 110px; }
+
+/* Project link (GitHub, demo…) shown on the right of the project name */
+.cv-row .cv-link { color: #4b4f58; font-size: 12.5px; text-decoration: none; white-space: nowrap; }
+.tpl-modern .cv-row .cv-link, .tpl-elegant .cv-row .cv-link { color: var(--acc); }
+
+/* LaTeX: clean professional look (Lato, the font used by the exported .tex) */
+.tpl-latex { font-family: Lato, "Helvetica Neue", Arial, sans-serif; font-size: 13px; line-height: 1.42; padding: 48px 58px; }
+.tpl-latex h1 { font: 700 30px/1.15 Lato, Arial, sans-serif; letter-spacing: .01em; }
+.tpl-latex .cv-head { flex-direction: column; text-align: center; gap: 0; }
+.tpl-latex .cv-title { font-size: 14px; color: #3d4048; margin-top: 3px; }
+.tpl-latex .cv-contact { font-size: 12px; color: #3d4048; }
+.tpl-latex h2 {
+  font: 700 12.5px/1.2 Lato, Arial, sans-serif; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--acc); border-bottom: .8px solid var(--acc); padding-bottom: 3px; margin: 16px 0 7px;
+}
+.tpl-latex .cv-entry { margin-bottom: 8px; }
+.tpl-latex .cv-row span, .tpl-latex .cv-org { color: #1b1d22; font-size: 12.5px; }
+.tpl-latex .cv-row span, .tpl-latex .cv-org { font-style: italic; }
+.tpl-latex .cv-row .cv-link { color: #1b1d22; font-size: 12px; font-style: normal; }
+.tpl-latex ul { padding-left: 16px; }
+.cv-skills { margin-bottom: 2px; }
+
+/* One-line entries (hackathons): text wraps on the left, date stays on the right */
+.cv-row .cv-line { flex: 1; min-width: 0; }
+.cv-entry.cv-compact { margin-bottom: 4px; }

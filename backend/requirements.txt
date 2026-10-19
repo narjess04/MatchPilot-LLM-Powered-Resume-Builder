@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+groq
+pydantic-settings
+pydantic[email]
+python-multipart
+pymupdf
+python-docx
+sqlalchemy>=2.0
+alembic
+argon2-cffi
+pyjwt
+httpx
+pytest

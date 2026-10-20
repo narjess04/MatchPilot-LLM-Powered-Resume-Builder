@@ -36,14 +36,16 @@ Bullets (experiences, projects):
 
 What else you may do:
 - Use the offer's wording for a skill the profile really shows (profile says "ReactJS", offer says "React": write "React").
-- Choose what to keep: projects most relevant to the offer first, at most 4.
-- Write the headline (title under the name) for this offer, at the candidate's real level.
+- Choose what to keep: projects most relevant to the offer first.
+
+One page: the CV must fit on ONE A4 page. Summary at most 60 words; at most 3 experiences with 2 or 3 bullets each; at most 3 projects with 1 or 2 bullets each; at most 5 skill categories. Drop the least relevant items to stay within the page.
+- Headline (the line under the name): the candidate's real title or degree, then the job they are looking for, taken from the offer's title (without "H/F" or gender marks). French: « Ingénieure Data Science diplômée, à la recherche d'un poste de Data Scientist ». English: "Data Science engineering graduate, seeking a Data Scientist position". Never a list of specialties or technologies.
 - Regroup skills into clear categories, the offer's key skills first. Every skill must cite where it comes from in the profile: "source" = the skill exactly as written in the profile (skills list, project technologies or bullets), "label" = how it is shown.
 
 Structure rules:
 - Experiences: keep them all unless one is clearly unrelated and adds nothing; "source" is the index of the profile entry. Their order is fixed by the code (chronological), so focus on the content.
 - Keep every education entry and every spoken language (translate the level if needed).
-- Hackathons: keep them; "result" is the result only ("3e place"). The CV shows hackathons as name, result and date only: no description.
+- Hackathons: keep them; "result" is the result only ("3e place"); "project" says in one short line (max 15 words) what the project built there is, from that hackathon's own description only (e.g. « plateforme de validation de modèles de risque de crédit »). Empty if the profile does not say.
 - Associations: role only in "role"; 1 or 2 short lines of description. Interests: translate only.
 
 Language: write the whole CV in {lang}. If the profile is in another language, translate it faithfully; keep names of companies, schools, products and technologies as they are. "changes" is always in French, for the candidate: 3 to 6 short items saying what you changed and why.
@@ -209,7 +211,8 @@ def build_profile(p: ProfileIn, d: TailorDraft, lang: Lang) -> tuple[ProfileOut,
         for i, o in enumerate(p.languages)
     ]
     hackathons = [
-        {**o, "result": _label(x.result, o.get("result", ""), o.get("name", ""))}
+        {**o, "result": _label(x.result, o.get("result", ""), o.get("name", "")),
+         "description": own([x.project], "hackathons", x.source)}
         for x, o in _picked(d.hackathons, p.hackathons)
     ]
     associations = [

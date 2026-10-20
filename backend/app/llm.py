@@ -144,7 +144,8 @@ MAX_IMAGES_PER_CALL = 5  # slices of one screenshot sent together
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_TIMEOUT = 90
-WRITING_TIMEOUT = 150
+WRITING_TIMEOUT = 180
+REASONING_ROOM = 8000  # tokens the writing model may spend reasoning before its answer
 MAX_WRITING_TOKENS = 4000  # a full tailored CV is ~1.2k tokens of JSON
 _http: httpx.AsyncClient | None = None
 
@@ -203,27 +204,55 @@ async def openrouter_chat(
 
 async def write_structured(
     *, system: str, user: str, schema: type[T], temperature: float, name: str = "result",
-    max_output: int = MAX_WRITING_TOKENS,
+    max_output: int = MAX_WRITING_TOKENS, attempts: int = 2, timeout: float = WRITING_TIMEOUT,
 ) -> T:
-    """Writing call (OpenRouter writing model) constrained to `schema`, validated with Pydantic; one retry."""
+    """Writing call (OpenRouter writing model) constrained to `schema`, validated with Pydantic.
+
+    Optional passes (with a fallback of their own) use attempts=1 and a shorter timeout: the writing model
+    sometimes reasons for minutes, and retrying the same call rarely helps.
+    """
     response_format = {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": strict_schema(schema)}}
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     model = get_settings().openrouter_model
     if not model:
         raise LLMError("Modèle de rédaction manquant (OPENROUTER_MODEL dans backend/.env).", 503)
+    for attempt in range(1, attempts + 1):
+        try:
+            content = await openrouter_chat(
+                models=[model], messages=messages, response_format=response_format, temperature=temperature,
+                # The writing model always reasons and its host ignores reasoning budgets: "low" effort keeps it
+                # around 1k reasoning tokens (default effort: ~9k, 4 min per CV); the room left for reasoning in
+                # max_tokens absorbs the occasional long one instead of cutting the answer
+                reasoning={"effort": get_settings().openrouter_reasoning_effort}, timeout=timeout,
+                max_tokens=REASONING_ROOM + max_output,
+            )
+        except LLMError as e:
+            if attempt == attempts or e.status_code != 502:
+                raise
+            log.warning("Writing attempt %d/%d failed (%s), retrying", attempt, attempts, e.message)
+            continue
+        try:
+            return schema.model_validate_json(content)
+        except ValidationError as e:
+            log.warning("Writing output attempt %d/%d invalid: %s", attempt, attempts, str(e)[:200])
+    raise LLMError("Le modèle de rédaction a renvoyé une réponse invalide, réessayez.", 502)
+
+
+async def look_structured(png: bytes, instruction: str, schema: type[T], name: str = "result") -> T:
+    """Vision call (OpenRouter vision models) answering about one image with JSON constrained to `schema`."""
+    response_format = {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": strict_schema(schema)}}
+    image = {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(png).decode()}}
     for attempt in (1, 2):
         content = await openrouter_chat(
-            models=[model], messages=messages, response_format=response_format, temperature=temperature,
-            # The writing model always reasons: without a budget a CV takes ~4 min and 9k reasoning tokens
-            reasoning={"max_tokens": get_settings().openrouter_reasoning_tokens}, timeout=WRITING_TIMEOUT,
-            # A run-away answer stops early (and is reported) instead of hitting the timeout
-            max_tokens=get_settings().openrouter_reasoning_tokens + max_output,
+            models=get_settings().openrouter_vision_models,
+            messages=[{"role": "user", "content": [{"type": "text", "text": instruction}, image]}],
+            response_format=response_format, temperature=0,
         )
         try:
             return schema.model_validate_json(content)
         except ValidationError as e:
-            log.warning("Writing output attempt %d/2 invalid: %s", attempt, str(e)[:200])
-    raise LLMError("Le modèle de rédaction a renvoyé une réponse invalide, réessayez.", 502)
+            log.warning("Vision output attempt %d/2 invalid: %s", attempt, str(e)[:200])
+    raise LLMError("La mise en page de l'exemple n'a pas pu être analysée, réessayez.", 502)
 
 
 async def read_screenshots(pngs: list[bytes], instruction: str) -> str:

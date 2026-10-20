@@ -12,3 +12,4 @@ argon2-cffi
 pyjwt
 httpx
 pytest
+playwright

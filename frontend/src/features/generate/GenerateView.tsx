@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import * as api from "../../api";
@@ -6,7 +6,7 @@ import { ProgressModal } from "../../components/ProgressModal";
 import { useToast } from "../../components/Toast";
 import { IconCheck, IconCopy, IconDoc, IconDownload, IconInfo, IconPen, IconSparkle } from "../../components/icons";
 import { toLatex } from "../../lib/latex";
-import { cvFileName, printCv } from "../../lib/printCv";
+import { cvFileName, cvPdfHtml, downloadBlob } from "../../lib/cvPdf";
 import { useWorkspace } from "../../state/workspace";
 import type { CoverLetter, GenMode, Generation, JobAnalysis, KeywordCoverage, Lang } from "../../types";
 import { CvSheet } from "../template/CvSheet";
@@ -201,11 +201,31 @@ function Todo({ done, to, label }: { done: boolean; to: string; label: string })
 
 function CvResult({ onRegenerate, busy }: { onRegenerate: () => void; busy: boolean }) {
   const { ws } = useWorkspace();
+  const toast = useToast();
+  const pdfSheet = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState({ scale: 1, fits: true });
+  const [exporting, setExporting] = useState(false);
   const result = ws.generation.cv;
   if (!result) return <Empty label="Le CV n'a pas encore été généré." action="Générer le CV" onClick={onRegenerate} busy={busy} />;
   // The photo is not sent to the server: put it back for the preview
   const profile = { ...result.profile, photo: ws.profile?.photo ?? null };
   const lang = ws.generation.lang;
+  const filename = cvFileName(profile.full_name);
+  const onFit = (f: { scale: number; fits: boolean }) =>
+    setFit((prev) => (prev.scale === f.scale && prev.fits === f.fits ? prev : f));
+
+  const downloadPdf = async () => {
+    if (!pdfSheet.current) return;
+    setExporting(true);
+    try {
+      const blob = await api.exportCvPdf(cvPdfHtml(pdfSheet.current, lang, fit.fits), filename);
+      downloadBlob(blob, `${filename}.pdf`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Création du PDF impossible.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="gen-layout">
@@ -217,17 +237,23 @@ function CvResult({ onRegenerate, busy }: { onRegenerate: () => void; busy: bool
           <b>Votre CV pour cette offre</b>
           <div className="gen-actions">
             <button className="btn btn-ghost btn-sm" disabled={busy} onClick={onRegenerate}>Régénérer le CV</button>
-            <button className="btn btn-primary btn-sm" onClick={() => printCv(profile.full_name)}>
-              <IconDownload />Télécharger en PDF
+            <button className="btn btn-primary btn-sm" disabled={exporting} onClick={downloadPdf}>
+              <IconDownload />{exporting ? "Création du PDF…" : "Télécharger en PDF"}
             </button>
           </div>
         </div>
-        <p className="small muted gen-pdf-hint">
-          Dans la fenêtre qui s'ouvre, choisissez « Enregistrer au format PDF » : le fichier s'appelle {cvFileName(profile.full_name)}.pdf.
-        </p>
-        <ScaledSheet profile={profile} settings={ws.settings} lang={lang} />
-        {/* Full-size copy used only when printing to PDF */}
-        {createPortal(<div className="print-root"><CvSheet profile={profile} settings={ws.settings} lang={lang} /></div>, document.body)}
+        {!fit.fits && (
+          <div className="notice warn">
+            <IconInfo />
+            <div>Votre CV dépasse une page même avec un texte réduit : retirez un projet ou quelques puces dans votre profil, puis régénérez.</div>
+          </div>
+        )}
+        <ScaledSheet profile={profile} settings={ws.settings} lang={lang} onePage />
+        {/* Full-size copy, off screen, sent to the server for the PDF */}
+        {createPortal(
+          <div className="pdf-root"><CvSheet ref={pdfSheet} profile={profile} settings={ws.settings} lang={lang} onePage onFit={onFit} /></div>,
+          document.body,
+        )}
       </div>
 
       <aside className="stack">

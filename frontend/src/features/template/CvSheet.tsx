@@ -1,7 +1,7 @@
-import { forwardRef, type CSSProperties, type ReactNode } from "react";
+import { forwardRef, Fragment, useCallback, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { CV_LABELS } from "../../lib/cvLabels";
-import { shortUrl } from "../../lib/latex";
-import { dates, lines } from "../../lib/utils";
+import { shortUrl, withScheme } from "../../lib/latex";
+import { dates, inlineDescription, lines } from "../../lib/utils";
 import { allSkills, type Lang, type Profile, type Settings } from "../../types";
 import { TEMPLATES } from "./templates";
 
@@ -19,22 +19,75 @@ const Bullets = ({ text }: { text: string }) => {
 const Section = ({ title, show, children }: { title: string; show: boolean; children: ReactNode }) =>
   show ? <section><h2>{title}</h2>{children}</section> : null;
 
-type Props = { profile: Profile; settings: Settings; lang?: Lang };
+export const A4_WIDTH = 794;
+export const A4_HEIGHT = 1123;
+const MIN_FIT = 0.78; // below this the text gets too small to read: the CV must be shortened instead
+
+type Props = {
+  profile: Profile;
+  settings: Settings;
+  lang?: Lang;
+  /** Shrink the page (down to MIN_FIT) so the CV fits on one A4 page; reports the scale and whether it fits */
+  onePage?: boolean;
+  onFit?: (fit: { scale: number; fits: boolean }) => void;
+};
 
 /** A4 CV page rendered with the selected template (single column, ATS-friendly). */
-export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet({ profile: p, settings: s, lang = "fr" }, ref) {
+export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet(
+  { profile: p, settings: s, lang = "fr", onePage = false, onFit },
+  ref,
+) {
   const LABELS = CV_LABELS[lang];
   const showPhoto = s.photo && TEMPLATES[s.template].photo && !!p.photo;
-  const contact = [p.email, p.phone, p.location, p.linkedin, p.website].filter(Boolean).join(" · ");
+  const contact: ReactNode[] = [
+    p.email && <a href={`mailto:${p.email}`}>{p.email}</a>,
+    p.phone,
+    p.location,
+    p.linkedin && <a href={withScheme(p.linkedin)}>{shortUrl(p.linkedin)}</a>,
+    p.website && <a href={withScheme(p.website)}>{shortUrl(p.website)}</a>,
+  ].filter(Boolean);
+
+  const sheet = useRef<HTMLDivElement | null>(null);
+  const setRefs = useCallback((el: HTMLDivElement | null) => {
+    sheet.current = el;
+    if (typeof ref === "function") ref(el);
+    else if (ref) ref.current = el;
+  }, [ref]);
+
+  // One page: lay the content out on a wider page and scale it down until it fits the A4 height.
+  // The text stays real text (in the PDF too); `data-fit` tells the parent the visual scale.
+  useLayoutEffect(() => {
+    const el = sheet.current;
+    if (!el) return;
+    Object.assign(el.style, { width: "", minHeight: "", transform: "" });
+    el.dataset.fit = "1";
+    if (!onePage) return;
+    el.style.minHeight = "0px";
+    let scale = 1;
+    while (el.offsetHeight * scale > A4_HEIGHT && scale > MIN_FIT) {
+      scale = Math.max(MIN_FIT, +(scale - 0.02).toFixed(2));
+      el.style.width = `${A4_WIDTH / scale}px`;
+    }
+    const fits = el.offsetHeight * scale <= A4_HEIGHT;
+    Object.assign(el.style, {
+      minHeight: `${A4_HEIGHT / scale}px`,
+      transform: scale < 1 ? `scale(${scale})` : "",
+      transformOrigin: "top left",
+    });
+    el.dataset.fit = String(scale);
+    onFit?.({ scale, fits });
+  });
 
   return (
-    <div ref={ref} className={`sheet tpl-${s.template}`} style={{ "--acc": s.accent } as CSSProperties}>
+    <div ref={setRefs} className={`sheet tpl-${s.template}`} style={{ "--acc": s.accent } as CSSProperties}>
       <header className="cv-head">
         {showPhoto && <img className="cv-photo" src={p.photo!} alt="" />}
         <div className="who">
           <h1>{p.full_name || "Prénom Nom"}</h1>
           {p.headline && <div className="cv-title">{p.headline}</div>}
-          {contact && <div className="cv-contact">{contact}</div>}
+          {contact.length > 0 && (
+            <div className="cv-contact">{contact.map((c, i) => <Fragment key={i}>{i > 0 && " · "}{c}</Fragment>)}</div>
+          )}
         </div>
       </header>
 
@@ -102,19 +155,23 @@ export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet({ prof
         <p>{p.interests.join(" · ")}</p>
       </Section>
 
-      {/* Hackathons last, one line each: name — result, date on the right (no description) */}
+      {/* Hackathons last, one line each: name — result : the project, date on the right */}
       <Section title={LABELS.hackathons} show={shown(p, "hackathons")}>
-        {p.hackathons.map((x, i) => (
-          <div key={i} className="cv-entry cv-compact">
-            <div className="cv-row">
-              <div className="cv-line">
-                <b>{x.name}</b>
-                {x.result && ` — ${x.result}`}
+        {p.hackathons.map((x, i) => {
+          const project = inlineDescription(x.description);
+          return (
+            <div key={i} className="cv-entry cv-compact">
+              <div className="cv-row">
+                <div className="cv-line">
+                  <b>{x.name}</b>
+                  {x.result && ` — ${x.result}`}
+                  {project && `${LABELS.colon}${project}`}
+                </div>
+                <span>{x.date}</span>
               </div>
-              <span>{x.date}</span>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </Section>
     </div>
   );

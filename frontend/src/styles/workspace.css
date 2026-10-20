@@ -263,4 +263,3 @@ kbd { font: 600 12px "Inter"; background: var(--surface); border: 1px solid var(
 .gen-mode.on { border-color: var(--accent); background: var(--accent-soft); }
 .gen-mode b { font-size: 15px; }
 .gen-mode span { font-size: 13px; color: var(--muted); }
-.gen-pdf-hint { margin: -6px 0 12px; }

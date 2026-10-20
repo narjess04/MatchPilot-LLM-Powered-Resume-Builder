@@ -314,6 +314,9 @@ class DraftLanguage(BaseModel):
 class DraftHackathon(BaseModel):
     source: int = Field(description="Index of this entry in the profile's hackathons list")
     result: str = Field(description="Result only, a few words (e.g. '2e place', '2nd place'), translated if needed; empty if none")
+    project: str = Field(
+        description="What the project built at THIS hackathon is, one short line (max 15 words), from its own description; empty if unknown"
+    )
 
 
 class DraftAssociation(BaseModel):
@@ -323,7 +326,7 @@ class DraftAssociation(BaseModel):
 
 
 class TailorDraft(BaseModel):
-    headline: str = Field(description="Professional title under the name, aimed at the offer, true to the profile")
+    headline: str = Field(description="Title under the name: real title or degree + the job sought (see rules)")
     summary: str = Field(description="3-4 line profile paragraph built only from facts in the profile")
     experiences: list[DraftExperience]
     projects: list[DraftProject]
@@ -362,6 +365,11 @@ class CoverLetterRequest(BaseModel):
     job: JobAnalysis
     lang: Lang
     notes: str = Field(default="", max_length=2000, description="Candidate's own words: why this job/company, availability…")
+
+
+class PdfRequest(BaseModel):
+    html: str = Field(description="Self-contained HTML page of the CV (styles inline, photo as a data: URL)")
+    filename: str = Field(default="CV", max_length=120)
 
 
 class CoverLetterResponse(BaseModel):

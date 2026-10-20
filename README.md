@@ -66,7 +66,7 @@ Les variables sont dans `backend/.env` (modèle : `backend/.env.example`). Ce fi
 |---|---|
 | `GROQ_API_KEY` | Extraction du profil et OCR |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Rédaction du CV et de la lettre |
-| `OPENROUTER_REASONING_TOKENS` | Budget de réflexion du modèle de rédaction (2048 par défaut : environ 50 s par CV au lieu de 4 min) |
+| `OPENROUTER_REASONING_EFFORT` | Effort de réflexion du modèle de rédaction (`low` par défaut : environ 40 s par CV au lieu de 4 min) |
 | `OPENROUTER_FALLBACK_MODEL` | Remplace Groq quand il est saturé (même modèle, `gpt-oss-120b`, payé à l'usage) |
 | `OPENROUTER_VISION_MODELS` | Lecture des captures d'offres (modèle principal puis secours, par défaut Gemini 3.1 Flash Lite puis GPT-6 Luna) |
 | `SECRET_KEY` | Signature des sessions (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) |

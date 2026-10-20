@@ -25,6 +25,10 @@ const postJson = <T,>(path: string, data: unknown) =>
   post<T>(path, { body: JSON.stringify(data), headers: { "Content-Type": "application/json" } });
 
 async function post<T>(path: string, init: RequestInit): Promise<T> {
+  return (await send(path, init)).json();
+}
+
+async function send(path: string, init: RequestInit): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(`/api${path}`, { method: "POST", credentials: "same-origin", ...init });
@@ -36,7 +40,7 @@ async function post<T>(path: string, init: RequestInit): Promise<T> {
     if (res.status === 401) throw new Error("Votre session a expiré : reconnectez-vous.");
     throw new Error(typeof detail === "string" ? detail : `Erreur ${res.status}`);
   }
-  return res.json();
+  return res;
 }
 
 export type ProfileImport = {
@@ -89,3 +93,12 @@ export const tailorCv = (profile: Profile, job: JobAnalysis, lang: Lang) =>
 /** Profil + analyse de l'offre (+ notes du candidat) -> lettre de motivation. */
 export const writeCoverLetter = (profile: Profile, job: JobAnalysis, lang: Lang, notes: string) =>
   postJson<LetterResult>("/cover-letter", { profile: withoutPhoto(profile), job, lang, notes });
+
+/** Page HTML du CV -> fichier PDF A4 (vrai texte, liens cliquables). */
+export async function exportCvPdf(html: string, filename: string): Promise<Blob> {
+  const res = await send("/export/cv-pdf", {
+    body: JSON.stringify({ html, filename }),
+    headers: { "Content-Type": "application/json" },
+  });
+  return res.blob();
+}

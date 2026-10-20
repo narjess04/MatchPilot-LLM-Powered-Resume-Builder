@@ -219,7 +219,7 @@ def test_stuffed_role_and_result_fall_back_to_the_profile():
     })
     from app.schemas import DraftAssociation, DraftHackathon
     d = draft(
-        hackathons=[DraftHackathon(source=0, result="2nd place at Hack4Health (2024), prototype built in 24 hours")],
+        hackathons=[DraftHackathon(source=0, result="2nd place at Hack4Health (2024), prototype built in 24 hours", project="")],
         associations=[DraftAssociation(source=0, role="Events lead, GDSC (2023-2025)", description=["Workshops for 80 students"])],
     )
     tailored, warnings = cv_writer.build_profile(p, d, "en")
@@ -256,11 +256,18 @@ def test_content_moved_from_another_entry_is_removed():
     assert any("autre rubrique" in w for w in warnings)
 
 
-def test_hackathons_keep_name_result_and_date_only():
+def test_hackathon_project_line_comes_from_its_own_description():
     from app.schemas import DraftHackathon
-    p = PROFILE.model_copy(update={"hackathons": [{"name": "Hack4Health", "result": "2e place", "date": "2024", "description": ""}]})
-    tailored, _ = cv_writer.build_profile(p, draft(hackathons=[DraftHackathon(source=0, result="2nd place")]), "en")
-    assert tailored.hackathons == [{"name": "Hack4Health", "result": "2nd place", "date": "2024", "description": ""}]
+    p = PROFILE.model_copy(update={"hackathons": [{"name": "Hack4Health", "result": "2e place", "date": "2024",
+                                                   "description": "Prototype d'application de suivi des rendez-vous en 24 h"}]})
+    ok = draft(hackathons=[DraftHackathon(source=0, result="2nd place", project="Appointment tracking app prototype built in 24 h")])
+    tailored, _ = cv_writer.build_profile(p, ok, "en")
+    assert tailored.hackathons == [{"name": "Hack4Health", "result": "2nd place", "date": "2024",
+                                    "description": "Appointment tracking app prototype built in 24 h"}]
+    # A project line taken from another entry (the WebNova internship) is dropped
+    moved = draft(hackathons=[DraftHackathon(source=0, result="2e place", project="Interface React et requêtes SQL pour 3 tableaux de bord")])
+    tailored, _ = cv_writer.build_profile(p, moved, "fr")
+    assert tailored.hackathons[0]["description"] == ""
 
 
 def test_translated_lines_are_not_mistaken_for_moved_content():
@@ -290,3 +297,56 @@ async def test_letter_flags_availability_the_candidate_did_not_give(fake_writer)
     answers += [letter("x"), letter("Je suis disponible immédiatement.")]
     result = await cover_letter.write_letter(PROFILE, JOB, "fr", notes="")
     assert any("disponibilité" in w for w in result.warnings)
+
+
+@pytest.mark.anyio
+async def test_truncated_writing_answer_is_retried_once(monkeypatch):
+    calls = []
+
+    async def fake_openrouter(**kwargs):
+        calls.append(kwargs["reasoning"])
+        if len(calls) == 1:
+            raise llm.LLMError("Réponse du modèle tronquée (document trop long).", 502)
+        return letter("Texte.").model_dump_json()
+
+    monkeypatch.setattr(llm, "openrouter_chat", fake_openrouter)
+    monkeypatch.setattr(llm.get_settings(), "openrouter_model", "test/model")
+    result = await llm.write_structured(system="s", user="u", schema=CoverLetter, temperature=0.5)
+    assert result.paragraphs == ["Texte."]
+    assert calls == [{"effort": "low"}, {"effort": "low"}]
+
+
+def test_pdf_export_requires_session(client):
+    assert client.post("/api/export/cv-pdf", json={"html": "<p>x</p>"}).status_code == 401
+
+
+def test_pdf_export_returns_a_named_pdf(client, monkeypatch):
+    from app import generation_router
+
+    async def fake_pdf(html):
+        assert "<h1>Sarah</h1>" in html
+        return b"%PDF-1.7 fake"
+
+    monkeypatch.setattr(generation_router, "html_to_pdf", fake_pdf)
+    register(client)
+    r = client.post("/api/export/cv-pdf", json={"html": "<h1>Sarah</h1>", "filename": "CV_Sarah-Ben-Ali"})
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.headers["content-disposition"] == 'attachment; filename="CV_Sarah-Ben-Ali.pdf"'
+    assert r.content == b"%PDF-1.7 fake"
+
+
+@pytest.mark.anyio
+async def test_pdf_render_blocks_network_and_keeps_links():
+    from app.pdf import html_to_pdf
+    import pymupdf
+    html = ('<html><body style="margin:0"><p>Réseau <a href="https://linkedin.com/in/sarah">linkedin.com/in/sarah</a></p>'
+            '<img src="http://127.0.0.1:9/leak.png"></body></html>')
+    try:
+        pdf = await html_to_pdf(html)
+    except Exception as e:  # no browser on this machine
+        pytest.skip(f"PDF browser unavailable: {e}")
+    page = pymupdf.open(stream=pdf, filetype="pdf")[0]
+    assert abs(page.rect.width - 595) < 2 and abs(page.rect.height - 842) < 2  # A4 in points
+    assert "Réseau" in page.get_text()
+    assert [link["uri"] for link in page.get_links()] == ["https://linkedin.com/in/sarah"]

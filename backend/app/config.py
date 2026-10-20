@@ -1,5 +1,6 @@
 import logging
 import secrets
+import sys
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,12 +19,16 @@ class Settings(BaseSettings):
     # LLM (OpenRouter) — writes the tailored CV and the cover letter
     openrouter_api_key: str = ""
     openrouter_model: str = ""
-    # Writing model reasoning budget: unbounded, a CV takes ~4 min; 2048 tokens ≈ 45-55 s and no runaway calls
-    openrouter_reasoning_tokens: int = 2048
+    # Writing model reasoning effort: "low" ≈ 40 s per CV; the default effort ≈ 4 min
+    openrouter_reasoning_effort: str = "low"
     # Same model as groq_model, used when Groq is rate-limited or down
     openrouter_fallback_model: str = "openai/gpt-oss-120b"
     # Reads job offer screenshots; the second model takes over when the first is unavailable
     openrouter_vision_models: list[str] = ["google/gemini-3.1-flash-lite", "openai/gpt-6-luna"]
+
+    # PDF export: browser used by Playwright. "msedge" uses the Edge already installed on Windows; empty uses
+    # Playwright's own Chromium (install it with: python -m playwright install chromium)
+    pdf_browser_channel: str = "msedge" if sys.platform == "win32" else ""
 
     # App
     database_url: str = "sqlite:///./matchpilot.db"

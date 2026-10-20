@@ -49,11 +49,6 @@ def analyze():
     _todo()
 
 
-@app.post("/api/export/cv")  # ExportCVRequest -> fichier .docx
-def export_cv():
-    _todo()
-
-
 @app.post("/api/export/cover-letter")  # ExportLetterRequest -> fichier .docx
 def export_cover_letter():
     _todo()

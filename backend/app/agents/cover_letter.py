@@ -16,6 +16,7 @@ from .style import STYLE_RULES, lint, strip_dashes
 
 log = logging.getLogger("uvicorn.error")
 
+OPTIONAL_PASS_TIMEOUT = 90  # editing / fixing passes: past this, the draft is kept
 LETTER_TOKENS = 1500  # a letter is ~500 tokens of JSON; a longer answer is a run-away
 AVAILABILITY = ("disponible", "disponibilite", "available", "availability", "start soon", "immediately", "immediatement")
 
@@ -86,6 +87,7 @@ async def write_letter(profile: ProfileIn, job: JobAnalysis, lang: Lang, notes: 
             system=EDIT_SYSTEM.format(**fmt),
             user=f"Draft to rewrite:\n<draft>\n{draft.model_dump_json(indent=1)}\n</draft>\n\nFacts it must stay true to:\n{facts}",
             schema=CoverLetter, temperature=0.7, name="cover_letter", max_output=LETTER_TOKENS,
+            attempts=1, timeout=OPTIONAL_PASS_TIMEOUT,
         )
     except llm.LLMError as e:
         # The draft already follows the style rules: keep it, the check below still cleans what is left
@@ -99,6 +101,7 @@ async def write_letter(profile: ProfileIn, job: JobAnalysis, lang: Lang, notes: 
                 system=FIX_SYSTEM.format(**fmt),
                 user=f"Expressions to remove: {', '.join(leftovers)}\n\n<letter>\n{letter.model_dump_json(indent=1)}\n</letter>",
                 schema=CoverLetter, temperature=0.3, name="cover_letter", max_output=LETTER_TOKENS,
+                attempts=1, timeout=OPTIONAL_PASS_TIMEOUT,
             )
         except llm.LLMError as e:
             log.warning("Cover letter fix pass failed (%s), leftovers are reported instead", e.message)

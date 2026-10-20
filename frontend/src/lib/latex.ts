@@ -14,7 +14,7 @@ export function tex(s: string): string {
     .replace(/ /g, "~");
 }
 
-const withScheme = (url: string) => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
+export const withScheme = (url: string) => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
 /** Display form of a URL: no scheme, no "www.", no trailing slash. */
 export const shortUrl = (url: string) => url.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "");
 const href = (url: string) =>

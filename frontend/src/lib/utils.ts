@@ -42,3 +42,9 @@ export function readSquareImage(file: File, max = 320): Promise<string> {
 
 export const fileExt = (name: string) => name.split(".").pop()?.toLowerCase() ?? "";
 
+
+/** Description shown on one line after a hackathon's name, or null when it is too long for a single line. */
+export function inlineDescription(description: string, max = 140): string | null {
+  const text = lines(description).map((l) => l.replace(/[\s.;]+$/, "")).join(" ; ");
+  return text && text.length <= max ? text : null;
+}

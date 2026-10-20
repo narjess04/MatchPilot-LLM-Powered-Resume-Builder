@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { migrateProfile, type Profile, type Settings, type Workspace } from "../types";
+import { emptyGeneration, migrateProfile, type Profile, type Settings, type Workspace } from "../types";
 
 // One saved workspace per user on this browser
 const storageKey = (userId: string) => `mp-workspace-v1:${userId}`;
@@ -13,6 +13,7 @@ const DEFAULT: Workspace = {
   noticeClosed: false,
   offer: { text: "" },
   settings: { template: "modern", photo: true, accent: "#0f6e63" },
+  generation: emptyGeneration(),
 };
 
 function load(key: string): Workspace {
@@ -20,6 +21,7 @@ function load(key: string): Workspace {
     const saved = localStorage.getItem(key);
     if (saved) {
       const w: Workspace = { ...DEFAULT, ...JSON.parse(saved) };
+      w.generation = { ...emptyGeneration(), ...w.generation };
       return w.profile ? { ...w, profile: migrateProfile(w.profile) } : w;
     }
   } catch {

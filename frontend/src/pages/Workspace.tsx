@@ -13,6 +13,7 @@ const CRUMBS: Record<string, string> = {
   profile: "Préparer · Mon profil",
   offer: "Préparer · Offre d'emploi",
   template: "Préparer · Modèle de CV",
+  generate: "Générer · CV & lettre",
 };
 
 export default function Workspace() {
@@ -36,17 +37,10 @@ export default function Workspace() {
   const pct = p ? completion(p).pct : 0;
   const avatar = p?.photo || user?.avatar_url;
   const displayName = user?.full_name || p?.full_name || user?.email || "";
-  const done = {
-    profile: !!p && pct >= 70,
-    offer: ws.offer.text.trim().length >= 150,
-    template: !!p,
-  };
-
-  const item = (to: keyof typeof done, label: string, icon: ReactNode) => (
+  const item = (to: string, label: string, icon: ReactNode) => (
     <NavLink to={to} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
       {icon}
       {label}
-      {done[to] && <span className="check"><IconCheck /></span>}
     </NavLink>
   );
 
@@ -56,14 +50,11 @@ export default function Workspace() {
         <Link to="/" className="logo"><LogoMark /><span>MatchPilot</span></Link>
         <div className="nav-label">Préparer</div>
         {item("profile", "Mon profil", <IconUser className="i" />)}
-        {item("offer", "Offre d'emploi", <IconBriefcase className="i" />)}
         {item("template", "Modèle de CV", <IconDoc className="i" />)}
+        {item("offer", "Offre d'emploi", <IconBriefcase className="i" />)}
         <div className="sep" />
         <div className="nav-label">Générer</div>
-        <button className="nav-item" disabled>
-          <IconSparkle className="i" />
-          CV &amp; lettre <span className="badge">Bientôt</span>
-        </button>
+        {item("generate", "CV & lettre", <IconSparkle className="i" />)}
         <div className="spacer" />
         {user && (
           <div className="me">

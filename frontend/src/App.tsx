@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { RequireAuth } from "./components/RequireAuth";
 import { ToastProvider } from "./components/Toast";
+import { GenerateView } from "./features/generate/GenerateView";
 import { OfferView } from "./features/offer/OfferView";
 import { ProfileView } from "./features/profile/ProfileView";
 import { StartView } from "./features/profile/StartView";
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="profile" element={<ProfileRoute />} />
               <Route path="offer" element={<OfferView />} />
               <Route path="template" element={<TemplateView />} />
+              <Route path="generate" element={<GenerateView />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

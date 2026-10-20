@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     # LLM (OpenRouter) — writes the tailored CV and the cover letter
     openrouter_api_key: str = ""
     openrouter_model: str = ""
+    # Writing model reasoning budget: unbounded, a CV takes ~4 min; 2048 tokens ≈ 45-55 s and no runaway calls
+    openrouter_reasoning_tokens: int = 2048
+    # Same model as groq_model, used when Groq is rate-limited or down
+    openrouter_fallback_model: str = "openai/gpt-oss-120b"
+    # Reads job offer screenshots; the second model takes over when the first is unavailable
+    openrouter_vision_models: list[str] = ["google/gemini-3.1-flash-lite", "openai/gpt-6-luna"]
 
     # App
     database_url: str = "sqlite:///./matchpilot.db"

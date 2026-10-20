@@ -1,7 +1,7 @@
 """Data models shared by the API and the LLM agents.
 
-The models used as LLM output formats (CVData, JobAnalysis, MatchReport,
-TailoredCV, CoverLetter) are sent to Claude as JSON schemas, so field
+The models used as LLM output formats (ExtractedProfile, JobAnalysis, TailorDraft,
+CoverLetter) are sent to the models as JSON schemas, so field
 descriptions double as instructions.
 """
 
@@ -188,18 +188,33 @@ class ProfileImportResponse(BaseModel):
 # ---------- Job offer ----------
 
 
+class OfferExtractResponse(BaseModel):
+    text: str
+
+
+class OfferAnalyzeRequest(BaseModel):
+    text: str = Field(min_length=150, max_length=30_000)
+
+
 class JobAnalysis(BaseModel):
+    # Empty strings rather than None: Groq's strict JSON mode handles them more reliably
     job_title: str
-    company: str | None = None
-    location: str | None = None
+    company: str = ""
+    location: str = Field(default="", description="City/country, plus remote/hybrid/on-site if stated")
     language: Lang = Field(description="Language the job offer is written in")
-    seniority: str | None = Field(default=None, description="e.g. Internship, Junior, Mid, Senior")
-    contract_type: str | None = None
-    summary: str = Field(description="Two-sentence summary of the role")
+    seniority: Literal["internship", "junior", "mid", "senior", "lead", ""] = Field(
+        default="", description="Level targeted by the offer; empty if it cannot be told"
+    )
+    contract_type: str = Field(default="", description="As written: CDI, CDD, Stage, Alternance, Freelance…")
+    salary: str = Field(default="", description="As written in the offer")
+    education: str = Field(default="", description="Degree/level required, as written (e.g. 'Bac+5 en informatique')")
+    experience: str = Field(default="", description="Experience required, as written (e.g. '0 à 2 ans')")
+    spoken_languages: list[str] = Field(default=[], description="Spoken languages required, with level as written")
+    summary: str = Field(description="Two-sentence summary of the role, in the offer's language")
     required_skills: list[str] = Field(description="Hard skills/qualifications explicitly required")
-    nice_to_have_skills: list[str] = []
+    nice_to_have_skills: list[str] = Field(default=[], description="Skills presented as a plus/appreciated")
     soft_skills: list[str] = []
-    responsibilities: list[str] = []
+    responsibilities: list[str] = Field(default=[], description="Main missions, one short line each")
     keywords: list[str] = Field(
         description="ATS keywords as they literally appear in the offer (technologies, methods, certifications, job titles)"
     )
@@ -236,57 +251,119 @@ class KeywordCoverage(BaseModel):
 # ---------- Generation ----------
 
 
-class TailoredCV(BaseModel):
-    cv: CVData
-    changes: list[str] = Field(description="Short list of what was changed and why")
+class ProfileIn(BaseModel):
+    """Candidate profile as edited in the app (same shape as ProfileOut; the photo is not sent)."""
+
+    full_name: str = ""
+    headline: str = ""
+    email: str = ""
+    phone: str = ""
+    location: str = ""
+    linkedin: str = ""
+    website: str = ""
+    summary: str = ""
+    experiences: list[dict[str, str]] = []
+    education: list[dict[str, str]] = []
+    projects: list[dict[str, str]] = []
+    skills: list[dict] = []
+    languages: list[dict[str, str]] = []
+    hackathons: list[dict[str, str]] = []
+    associations: list[dict[str, str]] = []
+    interests: list[str] = []
+    sections: dict[str, bool] = {}
 
 
-class CoverLetter(BaseModel):
-    subject: str
-    greeting: str
-    paragraphs: list[str]
-    closing: str
+# LLM output for the tailored CV. Items point to the profile entry they rewrite ("source" index):
+# companies, schools, dates and links are copied from the profile by code, so the model cannot change them.
 
 
-# ---------- API payloads ----------
+class DraftExperience(BaseModel):
+    source: int = Field(description="Index of this experience in the profile's experiences list")
+    title: str = Field(description="Job title, may be translated; never upgraded (an intern stays an intern)")
+    bullets: list[str] = Field(description="Rewritten achievements, most relevant to the offer first")
 
 
-class AnalyzeResponse(BaseModel):
-    cv_text: str
-    cv: CVData
-    job: JobAnalysis
-    match: MatchReport
-    coverage: KeywordCoverage
+class DraftProject(BaseModel):
+    source: int = Field(description="Index of this project in the profile's projects list")
+    name: str
+    description: list[str]
+
+
+class DraftEducation(BaseModel):
+    source: int = Field(description="Index of this entry in the profile's education list")
+    degree: str = Field(description="Degree name, may be translated")
+    details: list[str]
+
+
+class DraftSkill(BaseModel):
+    source: str = Field(description="The skill exactly as written somewhere in the profile")
+    label: str = Field(description="How it is shown on the CV (same as source, or translated)")
+
+
+class DraftSkillGroup(BaseModel):
+    category: str
+    items: list[DraftSkill]
+
+
+class DraftLanguage(BaseModel):
+    source: int = Field(description="Index of this language in the profile's languages list")
+    language: str
+    level: str
+
+
+class DraftHackathon(BaseModel):
+    source: int = Field(description="Index of this entry in the profile's hackathons list")
+    result: str = Field(description="Result only, a few words (e.g. '2e place', '2nd place'), translated if needed; empty if none")
+
+
+class DraftAssociation(BaseModel):
+    source: int = Field(description="Index of this entry in the profile's associations list")
+    role: str = Field(description="Role only, a few words (e.g. 'Responsable événements', 'Events lead'), without organization or dates")
+    description: list[str] = Field(description="Actions of THIS association, from its own description in the profile")
+
+
+class TailorDraft(BaseModel):
+    headline: str = Field(description="Professional title under the name, aimed at the offer, true to the profile")
+    summary: str = Field(description="3-4 line profile paragraph built only from facts in the profile")
+    experiences: list[DraftExperience]
+    projects: list[DraftProject]
+    education: list[DraftEducation]
+    skills: list[DraftSkillGroup]
+    languages: list[DraftLanguage]
+    hackathons: list[DraftHackathon]
+    associations: list[DraftAssociation]
+    interests: list[str]
+    changes: list[str] = Field(description="What was changed and why, 3-6 short items, in French")
 
 
 class TailorRequest(BaseModel):
-    cv_text: str
-    cv: CVData
+    profile: ProfileIn
     job: JobAnalysis
-    match: MatchReport
-    ui_lang: Lang = "fr"
+    lang: Lang
 
 
 class TailorResponse(BaseModel):
-    cv: CVData
+    profile: ProfileOut
     changes: list[str]
     warnings: list[str]
     coverage_before: KeywordCoverage
     coverage_after: KeywordCoverage
 
 
+class CoverLetter(BaseModel):
+    subject: str = Field(description="Subject line: the job title (and reference if any)")
+    greeting: str
+    paragraphs: list[str] = Field(description="3 or 4 paragraphs, plain prose")
+    closing: str = Field(description="Closing sentence and sign-off formula, without the name")
+
+
 class CoverLetterRequest(BaseModel):
-    cv: CVData
+    profile: ProfileIn
     job: JobAnalysis
-    notes: str | None = Field(default=None, description="Optional extra info from the candidate (motivation, availability…)")
+    lang: Lang
+    notes: str = Field(default="", max_length=2000, description="Candidate's own words: why this job/company, availability…")
 
 
-class ExportCVRequest(BaseModel):
-    cv: CVData
-    language: Lang
-
-
-class ExportLetterRequest(BaseModel):
+class CoverLetterResponse(BaseModel):
     letter: CoverLetter
-    cv: CVData
-    job: JobAnalysis
+    warnings: list[str]

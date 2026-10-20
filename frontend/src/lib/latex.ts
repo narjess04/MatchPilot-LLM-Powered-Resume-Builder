@@ -1,4 +1,5 @@
-import type { Profile } from "../types";
+import type { Lang, Profile } from "../types";
+import { CV_LABELS } from "./cvLabels";
 import { dates, lines } from "./utils";
 
 /** Escapes text for LaTeX (pdfLaTeX, UTF-8 input). */
@@ -25,7 +26,9 @@ const itemize = (txt: string) => {
 };
 
 /** Full, compilable .tex document for the profile (pdfLaTeX, e.g. on Overleaf). */
-export function toLatex(p: Profile, accent = "#0f6e63"): string {
+export function toLatex(p: Profile, accent = "#0f6e63", lang: Lang = "fr"): string {
+  const L = CV_LABELS[lang];
+  const colon = L.colon.replace(" ", "~"); // non-breaking space before the French colon
   const contact = [
     p.email && `\\href{mailto:${p.email}}{${tex(p.email)}}`,
     p.phone && tex(p.phone),
@@ -47,10 +50,10 @@ export function toLatex(p: Profile, accent = "#0f6e63"): string {
 
   const skills = p.skills
     .filter((g) => g.items.length)
-    .map((g) => (g.category ? `\\textbf{${tex(g.category)} :} ` : "") + g.items.map(tex).join(", "))
+    .map((g) => (g.category ? `\\textbf{${tex(g.category)}${colon}}` : "") + g.items.map(tex).join(", "))
     // Languages are a line of the skills section
     .concat(p.languages.length
-      ? [`\\textbf{Langues :} ${p.languages.map((l) => tex(l.level ? `${l.language} (${l.level})` : l.language)).join(", ")}`]
+      ? [`\\textbf{${L.languages}${colon}}${p.languages.map((l) => tex(l.level ? `${l.language} (${l.level})` : l.language)).join(", ")}`]
       : [])
     .join("\\\\\n");
 
@@ -58,12 +61,10 @@ export function toLatex(p: Profile, accent = "#0f6e63"): string {
   // Single-line heading when there is no second line (organisation / result) to show
   const heading = (title: string, right: string, sub: string) =>
     sub ? `\\entry{${tex(title)}}{${tex(right)}}{${tex(sub)}}{}` : `\\project{${tex(title)}}{\\textit{${tex(right)}}}`;
-  // One line each: name — result : what was done (date on the right)
+  // One line each: name — result (date on the right), no description
   const hackathons = on("hackathons")
-    ? p.hackathons.map((x) => {
-        const what = lines(x.description).map(tex).join(" ; ");
-        return `\\textbf{${tex(x.name)}}${x.result ? ` — ${tex(x.result)}` : ""}${what ? ` : ${what}` : ""}\\hfill\\textit{${tex(x.date)}}\\par`;
-      }).join("\n\\smallskip\n")
+    ? p.hackathons.map((x) =>
+        `\\textbf{${tex(x.name)}}${x.result ? ` — ${tex(x.result)}` : ""}\\hfill\\textit{${tex(x.date)}}\\par`).join("\n\\smallskip\n")
     : "";
   const associations = on("associations")
     ? p.associations.map((x) =>
@@ -101,7 +102,7 @@ export function toLatex(p: Profile, accent = "#0f6e63"): string {
 ${p.headline ? `  ${tex(p.headline)}\\\\[3pt]\n` : ""}  {\\small ${contact}}
 \\end{center}
 
-${section("Profil", p.summary ? tex(p.summary) : "")}${section("Expérience professionnelle", experiences)}${section("Projets", projects)}${section("Formation", education)}${section("Compétences", skills)}${section("Vie associative", associations)}${section("Centres d'intérêt", interests)}${section("Hackathons \\& compétitions", hackathons)}
+${section(L.summary, p.summary ? tex(p.summary) : "")}${section(L.experience, experiences)}${section(L.projects, projects)}${section(L.education, education)}${section(L.skills, skills)}${section(tex(L.associations), associations)}${section(tex(L.interests), interests)}${section(tex(L.hackathons), hackathons)}
 \\end{document}
 `;
 }

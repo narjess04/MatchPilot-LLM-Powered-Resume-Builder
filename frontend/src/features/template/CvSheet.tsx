@@ -1,20 +1,9 @@
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
+import { CV_LABELS } from "../../lib/cvLabels";
 import { shortUrl } from "../../lib/latex";
 import { dates, lines } from "../../lib/utils";
-import { allSkills, type Profile, type Settings } from "../../types";
+import { allSkills, type Lang, type Profile, type Settings } from "../../types";
 import { TEMPLATES } from "./templates";
-
-const LABELS = {
-  summary: "Profil",
-  experience: "Expérience professionnelle",
-  projects: "Projets",
-  education: "Formation",
-  skills: "Compétences",
-  languages: "Langues",
-  hackathons: "Hackathons & compétitions",
-  associations: "Vie associative",
-  interests: "Centres d'intérêt",
-};
 
 export const languagesLine = (p: Profile) =>
   p.languages.map((l) => (l.level ? `${l.language} (${l.level})` : l.language)).join(", ");
@@ -30,10 +19,11 @@ const Bullets = ({ text }: { text: string }) => {
 const Section = ({ title, show, children }: { title: string; show: boolean; children: ReactNode }) =>
   show ? <section><h2>{title}</h2>{children}</section> : null;
 
-type Props = { profile: Profile; settings: Settings };
+type Props = { profile: Profile; settings: Settings; lang?: Lang };
 
 /** A4 CV page rendered with the selected template (single column, ATS-friendly). */
-export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet({ profile: p, settings: s }, ref) {
+export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet({ profile: p, settings: s, lang = "fr" }, ref) {
+  const LABELS = CV_LABELS[lang];
   const showPhoto = s.photo && TEMPLATES[s.template].photo && !!p.photo;
   const contact = [p.email, p.phone, p.location, p.linkedin, p.website].filter(Boolean).join(" · ");
 
@@ -90,12 +80,12 @@ export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet({ prof
       <Section title={LABELS.skills} show={allSkills(p).length > 0 || p.languages.length > 0}>
         {p.skills.filter((g) => g.items.length).map((g, i) => (
           <p key={i} className="cv-skills">
-            {g.category && <b>{g.category} : </b>}
+            {g.category && <b>{g.category}{LABELS.colon}</b>}
             {g.items.join(g.category ? ", " : " · ")}
           </p>
         ))}
         {p.languages.length > 0 && (
-          <p className="cv-skills"><b>{LABELS.languages} : </b>{languagesLine(p)}</p>
+          <p className="cv-skills"><b>{LABELS.languages}{LABELS.colon}</b>{languagesLine(p)}</p>
         )}
       </Section>
 
@@ -112,7 +102,7 @@ export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet({ prof
         <p>{p.interests.join(" · ")}</p>
       </Section>
 
-      {/* Hackathons last, one line each: name — result : what was done */}
+      {/* Hackathons last, one line each: name — result, date on the right (no description) */}
       <Section title={LABELS.hackathons} show={shown(p, "hackathons")}>
         {p.hackathons.map((x, i) => (
           <div key={i} className="cv-entry cv-compact">
@@ -120,7 +110,6 @@ export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet({ prof
               <div className="cv-line">
                 <b>{x.name}</b>
                 {x.result && ` — ${x.result}`}
-                {lines(x.description).length > 0 && ` : ${lines(x.description).join(" ; ")}`}
               </div>
               <span>{x.date}</span>
             </div>

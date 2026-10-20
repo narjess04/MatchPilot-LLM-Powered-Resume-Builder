@@ -41,3 +41,4 @@ export function readSquareImage(file: File, max = 320): Promise<string> {
 }
 
 export const fileExt = (name: string) => name.split(".").pop()?.toLowerCase() ?? "";
+

@@ -15,9 +15,12 @@ L'IA reformule et réorganise le contenu pour coller à l'offre, mais **n'invent
 - **Compte** : e-mail / mot de passe, Google, LinkedIn
 - **Import du profil** depuis un ancien CV (PDF, Word, photo ou scan) ou un PDF LinkedIn, avec contrôle anti-invention
 - **Profil éditable** : expériences, formation, projets avec lien GitHub, compétences par catégorie, langues, sections optionnelles (hackathons, vie associative, centres d'intérêt)
-- **Offre d'emploi** par copier-coller ou capture d'écran
+- **Offre d'emploi** par copier-coller ou capture(s) d'écran : seul le texte de l'annonce est gardé (menus, boutons, publicités et offres similaires sont ignorés)
 - **5 modèles de CV** compatibles ATS (dont un modèle LaTeX exportable vers Overleaf), photo et couleur au choix
-- *En cours* : score de correspondance profil × offre, CV adapté, lettre de motivation, export PDF / Word
+- **Analyse de l'offre** : compétences requises ou appréciées, prérequis, mots-clés ATS
+- **CV adapté à l'offre**, en français ou en anglais : réécrit et réorganisé, mais entreprises, dates et écoles sont recopiées du profil ; compétences et chiffres absents du profil retirés ou signalés ; taux de mots-clés avant / après
+- **Lettre de motivation** en français ou en anglais, écrite à partir du vrai parcours et des mots du candidat, puis relue pour retirer les tournures toutes faites
+- *En cours* : score de correspondance détaillé, export PDF / Word
 
 ## Stack
 
@@ -25,7 +28,7 @@ L'IA reformule et réorganise le contenu pour coller à l'offre, mais **n'invent
 |---|---|
 | Frontend | React, TypeScript, Vite |
 | Backend | FastAPI, SQLAlchemy, Alembic (SQLite en local, PostgreSQL en production) |
-| IA | Groq (`gpt-oss-120b` pour l'extraction, `qwen3.8-27b` pour l'OCR), OpenRouter (`qwen3.8-max` pour la rédaction) |
+| IA | Groq (`gpt-oss-120b` pour l'extraction, `qwen3.8-27b` pour l'OCR des CV), OpenRouter (`gemini-3.1-flash-lite` pour la lecture des captures d'offres, `qwen3.8-max` pour la rédaction) |
 | Documents | PyMuPDF, python-docx, LaTeX |
 
 ```
@@ -63,6 +66,9 @@ Les variables sont dans `backend/.env` (modèle : `backend/.env.example`). Ce fi
 |---|---|
 | `GROQ_API_KEY` | Extraction du profil et OCR |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Rédaction du CV et de la lettre |
+| `OPENROUTER_REASONING_TOKENS` | Budget de réflexion du modèle de rédaction (2048 par défaut : environ 50 s par CV au lieu de 4 min) |
+| `OPENROUTER_FALLBACK_MODEL` | Remplace Groq quand il est saturé (même modèle, `gpt-oss-120b`, payé à l'usage) |
+| `OPENROUTER_VISION_MODELS` | Lecture des captures d'offres (modèle principal puis secours, par défaut Gemini 3.1 Flash Lite puis GPT-6 Luna) |
 | `SECRET_KEY` | Signature des sessions (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Connexion Google (optionnel) |
 | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | Connexion LinkedIn (optionnel) |
@@ -70,19 +76,4 @@ Les variables sont dans `backend/.env` (modèle : `backend/.env.example`). Ce fi
 
 Pour Google et LinkedIn, l'URL de redirection à déclarer est `http://localhost:5173/api/auth/{google|linkedin}/callback`.
 
-## Structure
 
-```
-backend/
-  app/
-    auth/        # Sessions, Google, LinkedIn
-    agents/      # Agents IA (extraction, analyse, rédaction)
-    parsing.py   # Lecture PDF / Word / images (OCR)
-    nlp.py       # Mots-clés ATS, contrôle anti-invention
-  migrations/    # Alembic
-  tests/
-frontend/
-  src/
-    pages/       # Accueil, connexion, espace de travail
-    features/    # Profil, offre, modèles de CV
-```

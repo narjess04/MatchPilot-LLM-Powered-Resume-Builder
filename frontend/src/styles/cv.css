@@ -57,3 +57,19 @@
 /* One-line entries (hackathons): text wraps on the left, date stays on the right */
 .cv-row .cv-line { flex: 1; min-width: 0; }
 .cv-entry.cv-compact { margin-bottom: 4px; }
+
+/* ================= PDF (print) ================= */
+/* The full-size CV used for printing lives directly under <body>; it only shows when printing a CV */
+.print-root { display: none; }
+@media print {
+  @page { size: A4; margin: 14mm 0; }
+  body.print-cv { background: #fff !important; }
+  body.print-cv > *:not(.print-root) { display: none !important; }
+  body.print-cv .print-root { display: block; }
+  .print-root .sheet {
+    width: auto; min-height: 0; padding-top: 0; padding-bottom: 0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .print-root .cv-entry, .print-root .cv-skills { break-inside: avoid; }
+  .print-root h2 { break-after: avoid; }
+}

@@ -197,7 +197,7 @@ export function ProfileView() {
               {checks.map(([label, ok]) => <div key={label} className={ok ? "ok" : ""}>{label}</div>)}
             </div>
           </div>
-          <button className="btn btn-primary" onClick={() => navigate("/app/offer")}>Continuer vers l'offre <IconArrow /></button>
+          <button className="btn btn-primary" onClick={() => navigate("/app/template")}>Continuer : modèle de CV <IconArrow /></button>
           <button className="link-btn" style={{ justifySelf: "center", color: "var(--muted)" }} onClick={reimport}>
             Réimporter mon profil
           </button>

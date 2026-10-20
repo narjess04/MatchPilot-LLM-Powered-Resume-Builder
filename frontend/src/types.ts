@@ -1,3 +1,5 @@
+export type Lang = "fr" | "en";
+
 export type Source = "linkedin" | "linkedin-pdf" | "cv" | "scratch";
 
 export type Experience = { title: string; company: string; location: string; start: string; end: string; bullets: string };
@@ -32,6 +34,56 @@ export type Profile = {
   sections: OptionalSections;
 };
 
+/** Structured job offer, as returned by the backend's analysis. */
+export type JobAnalysis = {
+  job_title: string;
+  company: string;
+  location: string;
+  language: Lang;
+  seniority: "internship" | "junior" | "mid" | "senior" | "lead" | "";
+  contract_type: string;
+  salary: string;
+  education: string;
+  experience: string;
+  spoken_languages: string[];
+  summary: string;
+  required_skills: string[];
+  nice_to_have_skills: string[];
+  soft_skills: string[];
+  responsibilities: string[];
+  keywords: string[];
+};
+
+export type KeywordCoverage = { percent: number; found: string[]; missing: string[] };
+
+export type TailorResult = {
+  profile: Profile;
+  changes: string[];
+  warnings: string[];
+  coverage_before: KeywordCoverage;
+  coverage_after: KeywordCoverage;
+};
+
+export type CoverLetter = { subject: string; greeting: string; paragraphs: string[]; closing: string };
+export type LetterResult = { letter: CoverLetter; warnings: string[] };
+
+/** What the candidate wants to produce */
+export type GenMode = "cv" | "both" | "letter";
+
+/** Everything produced for the current offer; regenerated when the offer or the language changes. */
+export type Generation = {
+  mode: GenMode;
+  lang: Lang;
+  notes: string;
+  /** Offer text the analysis below was computed for */
+  offerText: string;
+  job: JobAnalysis | null;
+  cv: TailorResult | null;
+  letter: LetterResult | null;
+  /** The letter as edited by the candidate */
+  letterText: string;
+};
+
 export type TemplateId = "classic" | "modern" | "compact" | "elegant" | "latex";
 export type Settings = { template: TemplateId; photo: boolean; accent: string };
 
@@ -44,7 +96,12 @@ export type Workspace = {
   noticeClosed: boolean;
   offer: { text: string };
   settings: Settings;
+  generation: Generation;
 };
+
+export const emptyGeneration = (): Generation => ({
+  mode: "both", lang: "fr", notes: "", offerText: "", job: null, cv: null, letter: null, letterText: "",
+});
 
 export const emptyProfile = (): Profile => ({
   photo: null, full_name: "", headline: "", email: "", phone: "", location: "", linkedin: "", website: "", summary: "",

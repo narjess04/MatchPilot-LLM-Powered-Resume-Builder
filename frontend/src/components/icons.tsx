@@ -20,6 +20,7 @@ export const IconSparkle = (p: P) => <svg viewBox="0 0 24 24" {...stroke} stroke
 export const IconFileUp = (p: P) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth={2} {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3" /></svg>;
 export const IconPen = (p: P) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth={2} {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
 export const IconImage = (p: P) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth={2} {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M21 16l-5-5-8 8" /></svg>;
+export const IconDownload = (p: P) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth={2} {...p}><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>;
 export const IconCopy = (p: P) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth={2} {...p}><rect x="8" y="3" width="13" height="15" rx="2" /><path d="M16 21H5a2 2 0 0 1-2-2V8" /></svg>;
 export const IconInfo = (p: P) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth={2} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>;
 export const IconLogout = (p: P) => <svg viewBox="0 0 24 24" {...stroke} strokeWidth={2} {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>;

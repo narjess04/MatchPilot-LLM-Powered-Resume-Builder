@@ -3,24 +3,31 @@
  * Features still flagged in MOCK return sample data so the UI can be used before their backend exists.
  */
 import { SAMPLE_JOB, SAMPLE_PROFILE } from "./data/samples";
-import type { Profile } from "./types";
+import type { JobAnalysis, Lang, LetterResult, Profile, TailorResult } from "./types";
 
 export const MOCK = {
   profileImport: false,
   linkedinIdentity: true,
-  offerExtract: true,
+  offerExtract: false,
 };
 export const DEMO_MODE = Object.values(MOCK).some(Boolean);
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function postFile<T>(path: string, field: string, file: File, extra: Record<string, string> = {}): Promise<T> {
+async function postFile<T>(path: string, field: string, file: File | File[], extra: Record<string, string> = {}): Promise<T> {
   const form = new FormData();
-  form.append(field, file);
+  [file].flat().forEach((f) => form.append(field, f));
   Object.entries(extra).forEach(([k, v]) => form.append(k, v));
+  return post<T>(path, { body: form });
+}
+
+const postJson = <T,>(path: string, data: unknown) =>
+  post<T>(path, { body: JSON.stringify(data), headers: { "Content-Type": "application/json" } });
+
+async function post<T>(path: string, init: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`/api${path}`, { method: "POST", body: form, credentials: "same-origin" });
+    res = await fetch(`/api${path}`, { method: "POST", credentials: "same-origin", ...init });
   } catch {
     throw new Error("Serveur injoignable. Le backend est-il lancé ?");
   }
@@ -59,12 +66,26 @@ export async function linkedinSignIn(): Promise<Partial<Profile>> {
   throw new Error("La connexion LinkedIn n'est pas encore configurée.");
 }
 
-/** Capture d'écran de l'offre -> texte (lecture d'image côté backend). */
-export async function extractOfferFromImage(image: File): Promise<string> {
+/** Captures d'écran de l'offre (dans l'ordre de lecture) -> texte de l'annonce seule, sans l'interface du site. */
+export async function extractOfferFromImages(images: File[]): Promise<string> {
   if (MOCK.offerExtract) {
     await wait(2200);
     return SAMPLE_JOB;
   }
-  const { text } = await postFile<{ text: string }>("/offer/extract", "image", image);
+  const { text } = await postFile<{ text: string }>("/offer/extract", "images", images);
   return text;
 }
+
+/** Texte de l'offre -> analyse structurée (compétences, mots-clés ATS, prérequis). */
+export const analyzeOffer = (text: string) => postJson<JobAnalysis>("/offer/analyze", { text });
+
+// The photo stays in the browser: it is not needed to write the CV or the letter
+const withoutPhoto = ({ photo: _photo, ...profile }: Profile) => profile;
+
+/** Profil + analyse de l'offre -> CV réécrit pour l'offre, avec contrôles anti-invention. */
+export const tailorCv = (profile: Profile, job: JobAnalysis, lang: Lang) =>
+  postJson<TailorResult>("/tailor-cv", { profile: withoutPhoto(profile), job, lang });
+
+/** Profil + analyse de l'offre (+ notes du candidat) -> lettre de motivation. */
+export const writeCoverLetter = (profile: Profile, job: JobAnalysis, lang: Lang, notes: string) =>
+  postJson<LetterResult>("/cover-letter", { profile: withoutPhoto(profile), job, lang, notes });

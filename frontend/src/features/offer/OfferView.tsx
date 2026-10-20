@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { type DragEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as api from "../../api";
 import { useToast } from "../../components/Toast";
-import { IconArrow, IconCheck, IconCopy, IconImage } from "../../components/icons";
+import { IconArrow, IconCheck, IconCopy, IconImage, IconX } from "../../components/icons";
 import { SAMPLE_JOB } from "../../data/samples";
 import { useWorkspace } from "../../state/workspace";
 
 const MIN_CHARS = 150;
+const MAX_SHOTS = 6; // same limit as the backend
 type Shot = { file: File; url: string };
 
 export function OfferView() {
@@ -15,7 +16,7 @@ export function OfferView() {
   const navigate = useNavigate();
   const shotInput = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<"text" | "shot">("text");
-  const [shot, setShot] = useState<Shot | null>(null);
+  const [shots, setShots] = useState<Shot[]>([]);
   const [drag, setDrag] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
@@ -24,33 +25,51 @@ export function OfferView() {
   const setText = (t: string) => update((w) => ({ ...w, offer: { text: t } }));
   const n = text.trim().length;
 
-  const chooseImage = (file: File | undefined) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return toast("Choisissez une image (PNG ou JPG).");
-    setShot({ file, url: URL.createObjectURL(file) });
+  const shotsRef = useRef(shots);
+  shotsRef.current = shots;
+
+  const addImages = (files: (File | null)[]) => {
+    const images = files.filter((f): f is File => !!f && f.type.startsWith("image/"));
+    if (images.length < files.length) toast("Choisissez des images (PNG ou JPG).");
+    const room = MAX_SHOTS - shotsRef.current.length;
+    if (images.length > room) toast(`${MAX_SHOTS} captures maximum.`);
+    const added = images.slice(0, Math.max(room, 0)).map((file) => ({ file, url: URL.createObjectURL(file) }));
+    if (added.length) setShots((prev) => [...prev, ...added]);
   };
+
+  const removeShot = (i: number) =>
+    setShots((prev) => {
+      URL.revokeObjectURL(prev[i].url);
+      return prev.filter((_, j) => j !== i);
+    });
 
   // Ctrl+V of a screenshot anywhere on this page
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
-      const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
-      if (!item) return;
+      const items = [...(e.clipboardData?.items ?? [])].filter((i) => i.type.startsWith("image/"));
+      if (!items.length) return;
       e.preventDefault();
       setTab("shot");
-      chooseImage(item.getAsFile() ?? undefined);
+      addImages(items.map((i) => i.getAsFile()));
     };
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
   }, []);
 
-  // Free the previous preview URL whenever the image changes
-  useEffect(() => () => { if (shot) URL.revokeObjectURL(shot.url); }, [shot]);
+  // Free the preview URLs when leaving the page
+  useEffect(() => () => shotsRef.current.forEach((s) => URL.revokeObjectURL(s.url)), []);
+
+  const dropProps = {
+    onDragOver: (e: DragEvent) => { e.preventDefault(); setDrag(true); },
+    onDragLeave: () => setDrag(false),
+    onDrop: (e: DragEvent) => { e.preventDefault(); setDrag(false); addImages([...e.dataTransfer.files]); },
+  };
 
   const extract = async () => {
-    if (!shot) return;
+    if (!shots.length) return;
     setExtracting(true);
     try {
-      setText(await api.extractOfferFromImage(shot.file));
+      setText(await api.extractOfferFromImages(shots.map((s) => s.file)));
       setExtracted(true);
       setTab("text");
     } catch (e) {
@@ -99,11 +118,31 @@ export function OfferView() {
                 <span>{n > 0 && n < MIN_CHARS ? `${n} / ${MIN_CHARS} caractères minimum` : `${n} caractère${n > 1 ? "s" : ""}`}</span>
               </div>
             </div>
-          ) : shot ? (
-            <div className="shot-preview">
-              <div className={extracting ? "scan" : ""}><img src={shot.url} alt="Capture de l'offre" /></div>
+          ) : shots.length ? (
+            <div className={`shot-preview${drag ? " drag" : ""}`} {...dropProps}>
+              <div className="shot-list">
+                {shots.map((s, i) => (
+                  <figure key={s.url} className={`shot-thumb${extracting ? " scan" : ""}`}>
+                    <img src={s.url} alt={`Capture ${i + 1}`} />
+                    <span className="shot-num">{i + 1}</span>
+                    {!extracting && (
+                      <button className="shot-remove" aria-label={`Retirer la capture ${i + 1}`} onClick={() => removeShot(i)}>
+                        <IconX />
+                      </button>
+                    )}
+                  </figure>
+                ))}
+                {shots.length < MAX_SHOTS && !extracting && (
+                  <button className="shot-add" onClick={() => shotInput.current?.click()}>
+                    <IconImage />
+                    <span>Ajouter la suite</span>
+                  </button>
+                )}
+              </div>
               <div className="shot-bar">
-                <button className="link-btn" style={{ color: "var(--muted)" }} onClick={() => setShot(null)}>Changer d'image</button>
+                <span className="small muted">
+                  {shots.length > 1 ? "Les captures sont lues dans l'ordre, les passages en double sont fusionnés." : "Annonce longue ? Ajoutez une capture par écran."}
+                </span>
                 <button className="btn btn-primary btn-sm" disabled={extracting} onClick={extract}>
                   {extracting ? "Extraction…" : "Extraire le texte"}
                 </button>
@@ -116,12 +155,10 @@ export function OfferView() {
               role="button"
               onClick={() => shotInput.current?.click()}
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), shotInput.current?.click())}
-              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={(e) => { e.preventDefault(); setDrag(false); chooseImage(e.dataTransfer.files[0]); }}
+              {...dropProps}
             >
               <div className="o-ico"><IconImage /></div>
-              <b>Déposez une capture de l'offre</b>
+              <b>Déposez une ou plusieurs captures de l'offre</b>
               <span className="small muted">PNG ou JPG — ou collez-la directement avec <kbd>Ctrl</kbd> + <kbd>V</kbd></span>
             </div>
           )}
@@ -129,8 +166,9 @@ export function OfferView() {
             ref={shotInput}
             type="file"
             accept="image/*"
+            multiple
             hidden
-            onChange={(e) => { chooseImage(e.target.files?.[0]); e.target.value = ""; }}
+            onChange={(e) => { addImages([...(e.target.files ?? [])]); e.target.value = ""; }}
           />
         </div>
 
@@ -143,7 +181,7 @@ export function OfferView() {
               <div><IconCheck />Le CV sera rédigé dans la langue de l'offre (FR ou EN).</div>
             </div>
           </div>
-          <button className="btn btn-primary" onClick={() => navigate("/app/template")}>Choisir mon modèle <IconArrow /></button>
+          <button className="btn btn-primary" onClick={() => navigate("/app/generate")}>Continuer : générer <IconArrow /></button>
         </aside>
       </div>
     </section>

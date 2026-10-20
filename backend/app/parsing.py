@@ -6,6 +6,8 @@ used for scanned PDFs and photos, where no text layer exists.
 
 import asyncio
 import io
+import math
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -83,6 +85,92 @@ async def _ocr_pages(doc: pymupdf.Document) -> ExtractedText:
     pages = [page.get_pixmap(dpi=OCR_DPI).tobytes("png") for page in doc][:MAX_OCR_PAGES]
     texts = await asyncio.gather(*(llm.transcribe_image(png, OCR_INSTRUCTION) for png in pages))
     return ExtractedText("\n\n".join(t for t in texts if t).strip(), "ocr")
+
+
+# --- Job offer screenshots ---
+
+MAX_OFFER_SHOTS = 6
+SLICE_RATIO = 1.4  # slice height / width: tall screenshots are cut so the model sees the text full size
+SLICE_OVERLAP = 0.06  # share of a slice repeated in the next one, so no line is lost at a cut
+MAX_SLICE_PX = 1568  # output width; larger images get downscaled by the model anyway
+NO_OFFER = "AUCUNE_OFFRE"
+
+OFFER_OCR_INSTRUCTION = (
+    "Ces images sont des captures d'écran d'une offre d'emploi (site d'emploi, LinkedIn, page carrière…). "
+    "Si plusieurs images sont fournies, ce sont des morceaux consécutifs de la même page, de haut en bas, "
+    "qui se chevauchent légèrement : transcris chaque ligne une seule fois.\n"
+    "Transcris mot pour mot, sans en omettre aucun (y compris le contenu entre parenthèses), le texte de "
+    "l'offre : intitulé du poste, entreprise, lieu, type de contrat, salaire, présentation, missions, "
+    "profil recherché, compétences, avantages, processus de recrutement.\n"
+    "Ignore tout ce qui ne fait pas partie de l'annonce : menus, barre de recherche, boutons et liens "
+    "d'action (Postuler, Candidature simplifiée, Enregistrer, Partager, Signaler…), bandeaux de cookies, "
+    "publicités, offres similaires, suggestions de contacts, date de publication, nombre de candidats, "
+    "pied de page.\n"
+    "Conserve la langue d'origine, les accents, les chiffres et les intitulés exactement. Garde la structure : "
+    "un titre de section par ligne et chaque élément de liste sur sa propre ligne précédé de « - ». "
+    "N'ajoute, ne résume, ne traduis et ne corrige rien. Réponds uniquement avec le texte transcrit, sans markdown.\n"
+    f"Si aucune offre d'emploi n'est lisible sur les images, réponds uniquement : {NO_OFFER}"
+)
+
+
+async def extract_offer_text(shots: list[tuple[str, bytes]]) -> str:
+    """Screenshots of a job offer, in reading order -> text of the offer only (without the site's interface)."""
+    if not shots:
+        raise ParsingError("Ajoutez au moins une capture d'écran.")
+    if len(shots) > MAX_OFFER_SHOTS:
+        raise ParsingError(f"{MAX_OFFER_SHOTS} captures maximum.")
+    slices = []
+    for filename, data in shots:
+        ext = file_ext(filename)
+        if ext not in IMAGE_EXT:
+            raise ParsingError(f"« {filename} » n'est pas une image (PNG, JPG ou WEBP).")
+        slices.append(_slice_screenshot(data, ext[1:]))
+
+    texts = await asyncio.gather(*(llm.read_screenshots(s, OFFER_OCR_INSTRUCTION) for s in slices))
+    texts = [t.strip() for t in texts if t.strip() and t.strip() != NO_OFFER]
+    if not texts:
+        raise ParsingError("Aucune offre d'emploi lisible sur cette capture.")
+    text = texts[0]
+    for t in texts[1:]:
+        text = merge_overlapping(text, t)
+    if len(text) > MAX_TEXT_CHARS:
+        raise ParsingError("Offre trop longue.")
+    return text
+
+
+def _slice_screenshot(data: bytes, filetype: str) -> list[bytes]:
+    """One screenshot -> PNG slices of readable proportions (at most llm.MAX_IMAGES_PER_CALL)."""
+    page = _open(data, filetype)[0]
+    w, h = page.rect.width, page.rect.height
+    # Page units depend on the image's DPI: zoom is computed from the real pixel width
+    px_width = pymupdf.Pixmap(data).width
+    zoom = min(px_width, MAX_SLICE_PX) / w
+
+    slice_h = w * SLICE_RATIO
+    step = slice_h * (1 - SLICE_OVERLAP)
+    count = 1 if h <= slice_h else math.ceil((h - slice_h) / step) + 1
+    if count > llm.MAX_IMAGES_PER_CALL:
+        # Very long full-page capture: taller slices rather than more of them
+        count = llm.MAX_IMAGES_PER_CALL
+        slice_h = h / (count - (count - 1) * SLICE_OVERLAP)
+        step = slice_h * (1 - SLICE_OVERLAP)
+
+    matrix = pymupdf.Matrix(zoom, zoom)
+    return [
+        page.get_pixmap(matrix=matrix, clip=pymupdf.Rect(0, top, w, min(h, top + slice_h))).tobytes("png")
+        for top in (i * step for i in range(count))
+    ]
+
+
+def merge_overlapping(first: str, second: str) -> str:
+    """Join two transcriptions, dropping the lines repeated where consecutive screenshots overlap."""
+    a, b = first.splitlines(), second.splitlines()
+    key = lambda line: re.sub(r"\W+", "", line.lower())  # noqa: E731
+    ka, kb = [key(x) for x in a], [key(x) for x in b]
+    for n in range(min(len(a), len(b)), 0, -1):
+        if ka[-n:] == kb[:n] and any(ka[-n:]):
+            return "\n".join(a + b[n:])
+    return f"{first}\n\n{second}"
 
 
 def _docx_text(data: bytes) -> str:

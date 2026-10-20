@@ -5,7 +5,9 @@ from fastapi.responses import JSONResponse
 from .auth import oauth
 from .auth.router import router as auth_router
 from .config import get_settings
+from .generation_router import router as generation_router
 from .llm import LLMError
+from .offer_router import router as offer_router
 from .profile_router import router as profile_router
 
 settings = get_settings()
@@ -19,6 +21,8 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.include_router(profile_router)
+app.include_router(offer_router)
+app.include_router(generation_router)
 
 
 @app.exception_handler(LLMError)
@@ -40,23 +44,8 @@ def _todo():
     raise HTTPException(501, "Pas encore implémenté")
 
 
-@app.post("/api/offer/extract")  # capture d'écran -> texte de l'offre
-def extract_offer():
-    _todo()
-
-
 @app.post("/api/analyze")  # profil + offre -> score, compétences, mots-clés ATS
 def analyze():
-    _todo()
-
-
-@app.post("/api/tailor-cv")  # TailorRequest -> TailorResponse
-def tailor_cv():
-    _todo()
-
-
-@app.post("/api/cover-letter")  # CoverLetterRequest -> CoverLetter
-def cover_letter():
     _todo()
 
 

@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+import { IconArrow } from "../../components/icons";
 import { SAMPLE_PROFILE } from "../../data/samples";
 import { toLatex } from "../../lib/latex";
 import { useWorkspace } from "../../state/workspace";
@@ -7,6 +9,7 @@ import { ACCENTS, TEMPLATES } from "./templates";
 
 export function TemplateView() {
   const { ws, updateSettings } = useWorkspace();
+  const navigate = useNavigate();
   const profile = ws.profile ?? SAMPLE_PROFILE;
   const s = ws.settings;
   const t = TEMPLATES[s.template];
@@ -64,6 +67,8 @@ export function TemplateView() {
               </div>
             </div>
           </div>
+          <p className="small muted">Ce modèle est gardé pour tous vos CV : vous pouvez le changer quand vous voulez.</p>
+          <button className="btn btn-primary" onClick={() => navigate("/app/offer")}>Continuer : l'offre d'emploi <IconArrow /></button>
         </div>
 
         <div className="preview-wrap">
@@ -82,7 +87,7 @@ export function TemplateView() {
 }
 
 /** Download the .tex source, or open it directly in Overleaf (its "open a snippet" endpoint). */
-function LatexExport({ latex, name }: { latex: string; name: string }) {
+export function LatexExport({ latex, name }: { latex: string; name: string }) {
   const filename = `CV_${(name || "MatchPilot").normalize("NFKD").replace(/[^\w]+/g, "_").replace(/^_|_$/g, "")}.tex`;
 
   const download = () => {

@@ -119,12 +119,18 @@ export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet(
         ))}
       </Section>
 
+      {/* Education is compact (one line per degree) so the page goes to experience and projects */}
       <Section title={LABELS.education} show={p.education.length > 0}>
         {p.education.map((x, i) => (
-          <div key={i} className="cv-entry">
-            <div className="cv-row"><b>{x.degree}</b><span>{dates(x)}</span></div>
-            <div className="cv-org">{[x.institution, x.location].filter(Boolean).join(", ")}</div>
-            <Bullets text={x.details} />
+          <div key={i} className="cv-entry cv-compact">
+            <div className="cv-row">
+              <div className="cv-line">
+                <b>{x.degree}</b>
+                {(x.institution || x.location) && ` — ${[x.institution, x.location].filter(Boolean).join(", ")}`}
+              </div>
+              <span>{dates(x)}</span>
+            </div>
+            {lines(x.details).length > 0 && <div className="cv-org">{lines(x.details).join(" · ")}</div>}
           </div>
         ))}
       </Section>

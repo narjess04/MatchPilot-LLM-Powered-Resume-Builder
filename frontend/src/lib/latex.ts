@@ -45,8 +45,13 @@ export function toLatex(p: Profile, accent = "#0f6e63", lang: Lang = "fr"): stri
   const projects = p.projects.map((x) =>
     `\\project{${tex(x.name)}}{${x.link ? href(x.link) : ""}}\n${itemize(x.description)}`).join("\n");
 
-  const education = p.education.map((x) =>
-    `\\entry{${tex(x.degree)}}{${tex(dates(x))}}{${tex(x.institution)}}{${tex(x.location)}}\n${itemize(x.details)}`).join("\n");
+  // One line per degree (details, if any, on a small second line) so the page goes to experience and projects
+  const education = p.education.map((x) => {
+    const where = [x.institution, x.location].filter(Boolean).map(tex).join(", ");
+    const details = lines(x.details).map(tex).join(" · ");
+    return `\\textbf{${tex(x.degree)}}${where ? ` — ${where}` : ""}\\hfill\\textit{${tex(dates(x))}}\\par`
+      + (details ? `\n{\\small\\textit{${details}}}\\par` : "");
+  }).join("\n\\smallskip\n");
 
   const skills = p.skills
     .filter((g) => g.items.length)

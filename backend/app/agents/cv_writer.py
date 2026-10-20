@@ -31,14 +31,18 @@ Summary (the "Profil" paragraph, the first thing a recruiter reads):
 
 Bullets (experiences, projects):
 - One line each, 10 to 25 words: action + what + tool, and the result or scale only when the profile gives it. Start with an action noun or verb ("Développement d'une API REST…", "Built a REST API…").
-- Most relevant to the offer first; 2 to 4 bullets per experience, 1 to 3 per project. Merge or drop weak details.
+- Most relevant to the offer first; 2 or 3 bullets per experience. Merge or drop weak details.
+
+Projects are what makes a young candidate's profile interesting: give them room and detail. For each kept project, 2 to 4 bullets that together say what problem it solves, how it works (approach, architecture, models or methods), which tools, and the result or scale when the profile gives it. Use every useful detail the profile has about the project; never add details it does not have.
+
+Education is kept short: the code shows one line per degree (degree — school, dates). "details" stays empty unless one short item really matters for this offer (e.g. a final-year project in the offer's field), at most one line.
 - Each bullet stays in its own entry: never move content from one experience, project, hackathon or association to another.
 
 What else you may do:
 - Use the offer's wording for a skill the profile really shows (profile says "ReactJS", offer says "React": write "React").
 - Choose what to keep: projects most relevant to the offer first.
 
-One page: the CV must fit on ONE A4 page. Summary at most 60 words; at most 3 experiences with 2 or 3 bullets each; at most 3 projects with 1 or 2 bullets each; at most 5 skill categories. Drop the least relevant items to stay within the page.
+One page: the CV must fit on ONE A4 page. Summary at most 60 words; at most 3 experiences with 2 or 3 bullets each; at most 3 projects with 2 to 4 bullets each; at most 5 skill categories. When space runs out, cut education details, weak experience bullets and the least relevant project, not the detail of the best projects.
 - Headline (the line under the name): the candidate's real title or degree, then the job they are looking for, taken from the offer's title (without "H/F" or gender marks). French: « Ingénieure Data Science diplômée, à la recherche d'un poste de Data Scientist ». English: "Data Science engineering graduate, seeking a Data Scientist position". Never a list of specialties or technologies.
 - Regroup skills into clear categories, the offer's key skills first. Every skill must cite where it comes from in the profile: "source" = the skill exactly as written in the profile (skills list, project technologies or bullets), "label" = how it is shown.
 

@@ -8,10 +8,12 @@ import { IconCheck, IconCopy, IconDoc, IconDownload, IconInfo, IconPen, IconSpar
 import { toLatex } from "../../lib/latex";
 import { cvFileName, cvPdfHtml, downloadBlob } from "../../lib/cvPdf";
 import { useWorkspace } from "../../state/workspace";
-import type { CoverLetter, GenMode, Generation, JobAnalysis, KeywordCoverage, Lang } from "../../types";
+import type {
+  CoverLetter, CriterionMatch, GenMode, Generation, JobAnalysis, KeywordCoverage, Lang, MatchReport, Profile,
+} from "../../types";
 import { CvSheet } from "../template/CvSheet";
 import { ScaledSheet } from "../template/ScaledSheet";
-import { TEMPLATES } from "../template/templates";
+import { TEMPLATES, templateOf } from "../template/templates";
 import { LatexExport } from "../template/TemplateView";
 
 const MIN_OFFER_CHARS = 150;
@@ -30,6 +32,14 @@ function letterToText(l: CoverLetter, name: string, lang: Lang) {
   return [subject, l.greeting, ...l.paragraphs, l.closing, name].filter(Boolean).join("\n\n");
 }
 
+/** Short fingerprint of the profile and the offer, to tell when a match score is out of date. */
+function matchKey(profile: Profile, offerText: string) {
+  const text = JSON.stringify({ ...profile, photo: null }) + offerText;
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = (h * 33) ^ text.charCodeAt(i);
+  return `${text.length}:${(h >>> 0).toString(36)}`;
+}
+
 export function GenerateView() {
   const { ws, update } = useWorkspace();
   const toast = useToast();
@@ -37,6 +47,7 @@ export function GenerateView() {
   const profile = ws.profile;
   const offerText = ws.offer.text.trim();
   const [busy, setBusy] = useState<Part[] | null>(null);
+  const [matching, setMatching] = useState(false);
   const [tab, setTab] = useState<Part>("cv");
 
   const setGen = (patch: Partial<Generation>) => update((w) => ({ ...w, generation: { ...w.generation, ...patch } }));
@@ -62,6 +73,18 @@ export function GenerateView() {
     const job = await api.analyzeOffer(offerText);
     setGen({ job, offerText });
     return job;
+  };
+
+  const computeMatch = async () => {
+    setMatching(true);
+    try {
+      const job = await analysis();
+      setGen({ match: await api.matchProfile(profile, job), matchFor: matchKey(profile, offerText) });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Calcul du score impossible.");
+    } finally {
+      setMatching(false);
+    }
   };
 
   const generate = async (parts: Part[]) => {
@@ -102,10 +125,18 @@ export function GenerateView() {
   return (
     <section className="view">
       {busy && <ProgressModal title="Génération en cours" stages={stages} estimatedMs={busy.length > 1 ? 75_000 : 45_000} />}
+      {matching && <ProgressModal title="Calcul du score" stages={["Analyse de l'offre", "Comparaison avec votre profil"]} estimatedMs={20_000} />}
       <div className="view-head">
         <h1>CV &amp; lettre</h1>
         <p>Votre CV réécrit pour cette offre et une lettre de motivation, à partir de votre vrai parcours : rien n'est inventé.</p>
       </div>
+
+      <MatchCard
+        match={g.match}
+        stale={!!g.match && g.matchFor !== matchKey(profile, offerText)}
+        busy={matching || !!busy}
+        onCompute={computeMatch}
+      />
 
       <div className="gen-controls card">
         <div>
@@ -138,7 +169,7 @@ export function GenerateView() {
           <div className="gen-row">
             <div>
               <b>Modèle de CV</b>
-              <span className="small muted">{TEMPLATES[ws.settings.template].name}, gardé pour tous vos CV</span>
+              <span className="small muted">{TEMPLATES[templateOf(ws.settings)].name}, gardé pour tous vos CV</span>
             </div>
             <Link to="/app/template" className="btn btn-ghost btn-sm">Changer</Link>
           </div>
@@ -195,6 +226,114 @@ function Todo({ done, to, label }: { done: boolean; to: string; label: string })
     <div className={`gen-todo${done ? " done" : ""}`}>
       <span className="d">{done && <IconCheck />}</span>
       {done ? <span>{label}</span> : <Link to={to}>{label}</Link>}
+    </div>
+  );
+}
+
+const STATUS_LABEL = { match: "présent", partial: "approchant", missing: "absent" } as const;
+const CRITERION_LABEL: Record<CriterionMatch["criterion"], string> = {
+  education: "Formation",
+  experience: "Expérience",
+  spoken_languages: "Langues",
+};
+const CRITERION_STATUS: Record<CriterionMatch["status"], string> = {
+  met: "OK",
+  partial: "En partie",
+  unmet: "Non",
+  unknown: "À voir",
+};
+
+function MatchCard({ match, stale, busy, onCompute }: { match: MatchReport | null; stale: boolean; busy: boolean; onCompute: () => void }) {
+  if (!match) {
+    return (
+      <div className="card match-empty">
+        <div>
+          <h2 className="gen-h">Correspondance avec l'offre</h2>
+          <p className="small muted">
+            Comparez votre profil à l'offre, compétence par compétence. Le score tient compte du sens : il fonctionne même si l'offre et votre profil ne sont pas dans la même langue.
+          </p>
+        </div>
+        <button className="btn btn-ghost btn-sm" disabled={busy} onClick={onCompute}>Calculer mon score</button>
+      </div>
+    );
+  }
+  const groups = (["required", "nice_to_have"] as const)
+    .map((imp) => ({ imp, items: match.skills.filter((s) => s.importance === imp) }))
+    .filter((grp) => grp.items.length);
+
+  return (
+    <div className="card match">
+      {stale && (
+        <div className="notice warn">
+          <IconInfo />
+          <div>Votre profil ou l'offre a changé depuis ce calcul : recalculez pour un score à jour.</div>
+        </div>
+      )}
+      <div className="match-head">
+        <div className={`match-score${match.score >= 60 ? " good" : ""}`}><b>{match.score}</b><span>/100</span></div>
+        <div>
+          <h2 className="gen-h">Correspondance avec l'offre</h2>
+          {match.verdict && <p>{match.verdict}</p>}
+          <p className="small muted">
+            Compétences {match.skills_score} %{match.criteria_score !== null && <> · Formation, expérience, langues {match.criteria_score} %</>}
+          </p>
+        </div>
+        <button className="btn btn-ghost btn-sm" disabled={busy} onClick={onCompute}>Recalculer</button>
+      </div>
+
+      <div className="match-grid">
+        <div>
+          {groups.map(({ imp, items }) => (
+            <div key={imp} className="match-block">
+              <b className="small">{imp === "required" ? "Compétences demandées" : "Appréciées"}</b>
+              <div className="gen-chips">
+                {items.map((s) => (
+                  <span
+                    key={s.skill}
+                    className={`chip ${s.status === "match" ? "ok" : s.status === "partial" ? "part" : "miss"}`}
+                    title={s.evidence ? `${STATUS_LABEL[s.status]} : « ${s.evidence} »` : STATUS_LABEL[s.status]}
+                  >
+                    {s.skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p className="small muted match-legend">
+            <span className="chip ok">présente</span> <span className="chip part">approchante</span> <span className="chip miss">absente</span> · survolez une compétence pour voir où elle apparaît dans votre profil.
+          </p>
+          {match.criteria.length > 0 && (
+            <div className="match-block">
+              <b className="small">Prérequis</b>
+              <ul className="match-criteria">
+                {match.criteria.map((c) => (
+                  <li key={c.criterion}>
+                    <span className={`match-tag ${c.status}`}>{CRITERION_STATUS[c.status]}</span>
+                    <div>
+                      <b>{CRITERION_LABEL[c.criterion]}</b> <span className="muted">· {c.asked}</span>
+                      {c.note && <div className="small muted">{c.note}</div>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        <div>
+          {match.strengths.length > 0 && (
+            <div className="match-block">
+              <b className="small">Vos atouts pour ce poste</b>
+              <ul className="gen-list">{match.strengths.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+          )}
+          {match.tips.length > 0 && (
+            <div className="match-block">
+              <b className="small">Pour améliorer votre candidature</b>
+              <ul className="gen-list">{match.tips.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

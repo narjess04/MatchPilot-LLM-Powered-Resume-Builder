@@ -9,6 +9,7 @@ from .generation_router import router as generation_router
 from .llm import LLMError
 from .offer_router import router as offer_router
 from .profile_router import router as profile_router
+from .template_router import router as template_router
 
 settings = get_settings()
 app = FastAPI(title="MatchPilot API")
@@ -23,6 +24,7 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(offer_router)
 app.include_router(generation_router)
+app.include_router(template_router)
 
 
 @app.exception_handler(LLMError)
@@ -42,11 +44,6 @@ def health():
 
 def _todo():
     raise HTTPException(501, "Pas encore implémenté")
-
-
-@app.post("/api/analyze")  # profil + offre -> score, compétences, mots-clés ATS
-def analyze():
-    _todo()
 
 
 @app.post("/api/export/cover-letter")  # ExportLetterRequest -> fichier .docx

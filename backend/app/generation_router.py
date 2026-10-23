@@ -3,13 +3,21 @@ import re
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
-from .agents import cover_letter, cv_writer
+from .agents import cover_letter, cv_writer, matcher
 from .auth.deps import get_current_user
 from .models import User
 from .pdf import PdfError, html_to_pdf
-from .schemas import CoverLetterRequest, CoverLetterResponse, PdfRequest, TailorRequest, TailorResponse
+from .schemas import (
+    CoverLetterRequest, CoverLetterResponse, MatchReport, MatchRequest, PdfRequest, TailorRequest, TailorResponse,
+)
 
 router = APIRouter(prefix="/api", tags=["generation"])
+
+
+@router.post("/match")
+async def match_profile(body: MatchRequest, _user: User = Depends(get_current_user)) -> MatchReport:
+    """Profile + offer analysis -> match score, skill by skill, whatever the languages of the two."""
+    return await matcher.match(body.profile, body.job)
 
 
 @router.post("/tailor-cv")

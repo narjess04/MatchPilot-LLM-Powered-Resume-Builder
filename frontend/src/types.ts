@@ -54,6 +54,31 @@ export type JobAnalysis = {
   keywords: string[];
 };
 
+export type SkillMatch = {
+  skill: string;
+  importance: "required" | "nice_to_have";
+  status: "match" | "partial" | "missing";
+  /** Excerpt of the profile that proves it */
+  evidence: string;
+};
+export type CriterionMatch = {
+  criterion: "education" | "experience" | "spoken_languages";
+  asked: string;
+  status: "met" | "partial" | "unmet" | "unknown";
+  note: string;
+};
+/** Fit between the profile and the offer, judged by meaning whatever their languages. */
+export type MatchReport = {
+  score: number;
+  skills_score: number;
+  criteria_score: number | null;
+  verdict: string;
+  skills: SkillMatch[];
+  criteria: CriterionMatch[];
+  strengths: string[];
+  tips: string[];
+};
+
 export type KeywordCoverage = { percent: number; found: string[]; missing: string[] };
 
 export type TailorResult = {
@@ -82,10 +107,39 @@ export type Generation = {
   letter: LetterResult | null;
   /** The letter as edited by the candidate */
   letterText: string;
+  match: MatchReport | null;
+  /** Profile + offer the match above was computed for (see matchKey) */
+  matchFor: string;
 };
 
-export type TemplateId = "classic" | "modern" | "compact" | "elegant" | "latex";
-export type Settings = { template: TemplateId; photo: boolean; accent: string };
+export type TemplateId = "classic" | "modern" | "compact" | "elegant" | "latex" | "custom";
+
+/** Look of the candidate's example CV, as read by the vision model (the "custom" template). */
+export type CvStyle = {
+  font: "sans" | "serif";
+  header_align: "left" | "center";
+  name_size: "small" | "medium" | "large";
+  name_uppercase: boolean;
+  accent: string;
+  name_in_accent: boolean;
+  headings_in_accent: boolean;
+  heading_style: "underline" | "bar" | "filled" | "plain";
+  heading_uppercase: boolean;
+  density: "airy" | "normal" | "compact";
+  photo: "none" | "round" | "square";
+  two_columns: boolean;
+  description: string;
+};
+export type ExampleStyle = { style: CvStyle; preview: string; notes: string[] };
+export type CustomTemplate = ExampleStyle & { fileName: string };
+
+export type Settings = {
+  template: TemplateId;
+  photo: boolean;
+  accent: string;
+  /** Template built from the candidate's example CV, if any */
+  custom?: CustomTemplate | null;
+};
 
 export type Workspace = {
   profile: Profile | null;
@@ -101,6 +155,7 @@ export type Workspace = {
 
 export const emptyGeneration = (): Generation => ({
   mode: "both", lang: "fr", notes: "", offerText: "", job: null, cv: null, letter: null, letterText: "",
+  match: null, matchFor: "",
 });
 
 export const emptyProfile = (): Profile => ({

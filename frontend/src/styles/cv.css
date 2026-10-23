@@ -62,3 +62,25 @@
 /* Full-size copy of the CV sent to the server for the PDF: off screen, but laid out so it can be measured */
 .pdf-root { position: fixed; left: -10000px; top: 0; pointer-events: none; }
 .cv-contact a { color: inherit; text-decoration: none; }
+
+/* ================= Mon modèle (style read from the candidate's example CV) ================= */
+.tpl-custom h2 { text-transform: none; letter-spacing: .02em; margin: 18px 0 8px; }
+.tpl-custom[data-font="serif"], .tpl-custom[data-font="serif"] h1, .tpl-custom[data-font="serif"] h2 { font-family: Georgia, "Times New Roman", serif; }
+.tpl-custom[data-align="center"] .cv-head { flex-direction: column; text-align: center; gap: 10px; }
+.tpl-custom[data-align="center"] .cv-photo { order: 0; }
+.tpl-custom[data-name="small"] h1 { font-size: 24px; }
+.tpl-custom[data-name="large"] h1 { font-size: 34px; }
+.tpl-custom[data-name-upper] h1 { text-transform: uppercase; letter-spacing: .05em; }
+.tpl-custom[data-name-acc] h1, .tpl-custom[data-head-acc] h2 { color: var(--acc); }
+.tpl-custom[data-head-upper] h2 { text-transform: uppercase; letter-spacing: .08em; }
+.tpl-custom[data-heading="underline"] h2 { border-bottom: 1.5px solid var(--acc); padding-bottom: 3px; }
+.tpl-custom[data-heading="bar"] h2 { border-left: 4px solid var(--acc); padding-left: 10px; }
+.tpl-custom[data-heading="filled"] h2 { background: var(--acc); color: #fff; padding: 3px 10px; }
+.tpl-custom[data-density="airy"] { padding: 60px 70px; line-height: 1.6; }
+.tpl-custom[data-density="airy"] h2 { margin: 24px 0 10px; }
+.tpl-custom[data-density="compact"] { padding: 40px 48px; font-size: 12.5px; line-height: 1.42; }
+.tpl-custom[data-density="compact"] h2 { margin: 14px 0 6px; }
+.tpl-custom[data-density="compact"] .cv-entry { margin-bottom: 6px; }
+.tpl-custom[data-photo="round"] .cv-photo { border-radius: 50%; }
+.tpl-custom[data-photo="square"] .cv-photo { border-radius: 4px; }
+.tpl-custom .cv-row .cv-link { color: var(--acc); }

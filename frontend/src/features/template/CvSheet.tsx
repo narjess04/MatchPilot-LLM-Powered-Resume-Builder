@@ -3,7 +3,7 @@ import { CV_LABELS } from "../../lib/cvLabels";
 import { shortUrl, withScheme } from "../../lib/latex";
 import { dates, inlineDescription, lines } from "../../lib/utils";
 import { allSkills, type Lang, type Profile, type Settings } from "../../types";
-import { TEMPLATES } from "./templates";
+import { TEMPLATES, templateOf } from "./templates";
 
 export const languagesLine = (p: Profile) =>
   p.languages.map((l) => (l.level ? `${l.language} (${l.level})` : l.language)).join(", ");
@@ -38,7 +38,9 @@ export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet(
   ref,
 ) {
   const LABELS = CV_LABELS[lang];
-  const showPhoto = s.photo && TEMPLATES[s.template].photo && !!p.photo;
+  const template = templateOf(s);
+  const custom = template === "custom" ? s.custom!.style : null;
+  const showPhoto = s.photo && TEMPLATES[template].photo && !!p.photo;
   const contact: ReactNode[] = [
     p.email && <a href={`mailto:${p.email}`}>{p.email}</a>,
     p.phone,
@@ -79,7 +81,23 @@ export const CvSheet = forwardRef<HTMLDivElement, Props>(function CvSheet(
   });
 
   return (
-    <div ref={setRefs} className={`sheet tpl-${s.template}`} style={{ "--acc": s.accent } as CSSProperties}>
+    <div
+      ref={setRefs}
+      className={`sheet tpl-${template}`}
+      style={{ "--acc": s.accent } as CSSProperties}
+      {...(custom && {
+        "data-font": custom.font,
+        "data-align": custom.header_align,
+        "data-name": custom.name_size,
+        "data-heading": custom.heading_style,
+        "data-density": custom.density,
+        "data-photo": custom.photo === "round" ? "round" : "square",
+        "data-name-upper": custom.name_uppercase || undefined,
+        "data-name-acc": custom.name_in_accent || undefined,
+        "data-head-upper": custom.heading_uppercase || undefined,
+        "data-head-acc": custom.headings_in_accent || undefined,
+      })}
+    >
       <header className="cv-head">
         {showPhoto && <img className="cv-photo" src={p.photo!} alt="" />}
         <div className="who">

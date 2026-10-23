@@ -196,3 +196,63 @@ def _checked(result: ExtractedText) -> ExtractedText:
     if len(result.text) > MAX_TEXT_CHARS:
         raise ParsingError("Document trop long pour un CV.")
     return result
+
+
+# --- Example CV (template model) ---
+
+EXAMPLE_EXT = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
+EXAMPLE_WIDTH_PX = 1240  # the vision model needs to see rules and colours, not read small text
+PREVIEW_WIDTH_PX = 360
+
+
+SANS_FONTS = (
+    "sans", "arial", "helvetica", "calibri", "carlito", "lato", "roboto", "segoe", "verdana", "tahoma", "inter",
+    "montserrat", "poppins", "nunito", "raleway", "ubuntu", "futura", "gill", "avenir", "frutiger", "myriad", "aptos",
+)
+SERIF_FONTS = (
+    "serif", "times", "georgia", "garamond", "cambria", "roman", "charis", "minion", "palatino", "antiqua",
+    "baskerville", "caslon", "bodoni", "didot", "merriweather", "playfair", "crimson", "charter", "tinos", "constantia",
+    "bookman", "century", "cmr", "lmroman",
+)
+
+
+def pdf_font_family(page: pymupdf.Page) -> Literal["serif", "sans"] | None:
+    """Typeface family of a PDF page, from the names of the fonts that carry most of its text (None if unsure)."""
+    chars = {"serif": 0, "sans": 0}
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
+            for span in line["spans"]:
+                name = span["font"].split("+")[-1].lower().replace(" ", "").replace("-", "")
+                # "sans" first: "NotoSansSerif"-like names do not exist, but "SourceSerif" and "DejaVuSans" do
+                family = "sans" if any(f in name for f in SANS_FONTS) else "serif" if any(f in name for f in SERIF_FONTS) else None
+                if family:
+                    chars[family] += len(span["text"].strip())
+    total = sum(chars.values())
+    if total < 50:
+        return None
+    family = max(chars, key=chars.get)
+    return family if chars[family] / total >= 0.6 else None
+
+
+@dataclass
+class ExamplePage:
+    png: bytes  # first page, for the vision model
+    preview: bytes  # small JPEG for the app
+    font: Literal["serif", "sans"] | None  # read from the PDF's fonts; None for images
+
+
+def example_first_page(filename: str, data: bytes) -> ExamplePage:
+    ext = file_ext(filename)
+    if ext not in EXAMPLE_EXT:
+        raise ParsingError("Envoyez le CV exemple en PDF ou en image (PNG, JPG).")
+    page = _open(data, ext[1:])[0]
+
+    def render(width: int) -> pymupdf.Pixmap:
+        zoom = width / page.rect.width
+        return page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+
+    return ExamplePage(
+        png=render(EXAMPLE_WIDTH_PX).tobytes("png"),
+        preview=render(PREVIEW_WIDTH_PX).tobytes("jpeg", jpg_quality=80),
+        font=pdf_font_family(page) if ext == ".pdf" else None,
+    )

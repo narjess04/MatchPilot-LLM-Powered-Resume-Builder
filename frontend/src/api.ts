@@ -3,7 +3,7 @@
  * Features still flagged in MOCK return sample data so the UI can be used before their backend exists.
  */
 import { SAMPLE_JOB, SAMPLE_PROFILE } from "./data/samples";
-import type { JobAnalysis, Lang, LetterResult, Profile, TailorResult } from "./types";
+import type { ExampleStyle, JobAnalysis, Lang, LetterResult, MatchReport, Profile, TailorResult } from "./types";
 
 export const MOCK = {
   profileImport: false,
@@ -80,11 +80,18 @@ export async function extractOfferFromImages(images: File[]): Promise<string> {
   return text;
 }
 
+/** CV exemple (PDF ou image) -> son style (police, couleur, titres…), repris par « Mon modèle ». */
+export const templateFromExample = (file: File) => postFile<ExampleStyle>("/template/from-example", "file", file);
+
 /** Texte de l'offre -> analyse structurée (compétences, mots-clés ATS, prérequis). */
 export const analyzeOffer = (text: string) => postJson<JobAnalysis>("/offer/analyze", { text });
 
 // The photo stays in the browser: it is not needed to write the CV or the letter
 const withoutPhoto = ({ photo: _photo, ...profile }: Profile) => profile;
+
+/** Profil + analyse de l'offre -> score de correspondance, compétence par compétence (quelles que soient les langues). */
+export const matchProfile = (profile: Profile, job: JobAnalysis) =>
+  postJson<MatchReport>("/match", { profile: withoutPhoto(profile), job });
 
 /** Profil + analyse de l'offre -> CV réécrit pour l'offre, avec contrôles anti-invention. */
 export const tailorCv = (profile: Profile, job: JobAnalysis, lang: Lang) =>

@@ -17,10 +17,13 @@ L'IA reformule et réorganise le contenu pour coller à l'offre, mais **n'invent
 - **Profil éditable** : expériences, formation, projets avec lien GitHub, compétences par catégorie, langues, sections optionnelles (hackathons, vie associative, centres d'intérêt)
 - **Offre d'emploi** par copier-coller ou capture(s) d'écran : seul le texte de l'annonce est gardé (menus, boutons, publicités et offres similaires sont ignorés)
 - **5 modèles de CV** compatibles ATS (dont un modèle LaTeX exportable vers Overleaf), photo et couleur au choix
+- **Mon modèle** : envoyez un CV que vous aimez (PDF ou image), sa police, ses couleurs, ses titres et sa densité sont repris avec votre contenu (une colonne et l'ordre des sections restent ceux de MatchPilot, pour les ATS)
 - **Analyse de l'offre** : compétences requises ou appréciées, prérequis, mots-clés ATS
 - **CV adapté à l'offre**, en français ou en anglais : réécrit et réorganisé, mais entreprises, dates et écoles sont recopiées du profil ; compétences et chiffres absents du profil retirés ou signalés ; taux de mots-clés avant / après
 - **Lettre de motivation** en français ou en anglais, écrite à partir du vrai parcours et des mots du candidat, puis relue pour retirer les tournures toutes faites
-- *En cours* : score de correspondance détaillé, export PDF / Word
+- **Score de correspondance** sur 100, compétence par compétence (présente, approchante, absente) avec l'extrait du profil qui la prouve, plus formation, expérience et langues ; il compare le sens, donc il marche même si le profil et l'offre ne sont pas dans la même langue
+- **Export PDF** du CV
+- *En cours* : export Word
 
 ## Stack
 

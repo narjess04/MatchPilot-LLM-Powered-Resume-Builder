@@ -221,25 +221,63 @@ class JobAnalysis(BaseModel):
 
 
 # ---------- Match ----------
+# The model judges each requirement of the offer against the profile (by meaning, whatever the languages);
+# the score itself is computed by code from these verdicts.
 
 
-class MissingSkill(BaseModel):
+class SkillVerdict(BaseModel):
+    index: int = Field(description="Index of the skill in the offer's numbered skill list")
+    status: Literal["match", "partial", "missing"] = Field(
+        description="match: the profile shows this skill (same thing, in any language or wording); "
+        "partial: a close or weaker equivalent; missing: nothing in the profile"
+    )
+    evidence: str = Field(description="Short excerpt (3 to 12 words) copied verbatim from the profile that proves it; empty if missing")
+
+
+class CriterionVerdict(BaseModel):
+    criterion: Literal["education", "experience", "spoken_languages"]
+    status: Literal["met", "partial", "unmet", "unknown"] = Field(
+        description="unknown when the offer does not ask for it or the profile cannot tell"
+    )
+    note: str = Field(description="One short sentence in French explaining the verdict")
+
+
+class MatchDraft(BaseModel):
+    skills: list[SkillVerdict]
+    criteria: list[CriterionVerdict]
+    strengths: list[str] = Field(description="2 to 4 real assets of the candidate for this role, in French")
+    tips: list[str] = Field(description="2 to 4 concrete, honest actions to improve the application, in French")
+    verdict: str = Field(description="One sentence in French summing up the fit")
+
+
+class SkillMatch(BaseModel):
     skill: str
     importance: Literal["required", "nice_to_have"]
-    transferable_evidence: str | None = Field(
-        default=None,
-        description="Something real in the CV that partially covers this skill, if any",
-    )
+    status: Literal["match", "partial", "missing"]
+    evidence: str = ""
+
+
+class CriterionMatch(BaseModel):
+    criterion: Literal["education", "experience", "spoken_languages"]
+    asked: str = Field(description="What the offer asks, as written")
+    status: Literal["met", "partial", "unmet", "unknown"]
+    note: str = ""
 
 
 class MatchReport(BaseModel):
     score: int = Field(description="Overall fit from 0 to 100")
-    verdict: str = Field(description="One-sentence verdict")
-    matched_skills: list[str]
-    missing_skills: list[MissingSkill]
-    strengths: list[str] = Field(description="Most relevant assets of the candidate for this role")
-    relevant_experiences: list[str] = Field(description="Titles of the CV experiences/projects most relevant to the role")
-    tips: list[str] = Field(description="Concrete, honest actions to improve the application")
+    skills_score: int
+    criteria_score: int | None = None
+    verdict: str
+    skills: list[SkillMatch]
+    criteria: list[CriterionMatch]
+    strengths: list[str]
+    tips: list[str]
+
+
+class MatchRequest(BaseModel):
+    profile: "ProfileIn"
+    job: JobAnalysis
 
 
 class KeywordCoverage(BaseModel):
@@ -375,3 +413,36 @@ class PdfRequest(BaseModel):
 class CoverLetterResponse(BaseModel):
     letter: CoverLetter
     warnings: list[str]
+
+
+MatchRequest.model_rebuild()
+
+
+# ---------- CV template from an example ----------
+# The vision model describes the look of the candidate's example CV with a few closed choices;
+# the app turns them into a template. Section order and the single column stay the app's (ATS).
+
+
+class ExampleStyle(BaseModel):
+    font: Literal["sans", "serif"] = Field(description="Main typeface family of the CV")
+    header_align: Literal["left", "center"] = Field(description="Alignment of the name and contact block")
+    name_size: Literal["small", "medium", "large"] = Field(description="Size of the candidate's name compared with the body text")
+    name_uppercase: bool = Field(description="Name written in capital letters")
+    accent: str = Field(description="Main accent colour as #rrggbb (titles, name, rules); #1b1d22 if the CV is black and white")
+    name_in_accent: bool = Field(description="The name is written in the accent colour")
+    headings_in_accent: bool = Field(description="Section titles are written in the accent colour")
+    heading_style: Literal["underline", "bar", "filled", "plain"] = Field(
+        description="Section titles: underline = a rule under or across the title; bar = a vertical bar on the left; "
+        "filled = text on a coloured band; plain = no decoration"
+    )
+    heading_uppercase: bool = Field(description="Section titles in capital letters")
+    density: Literal["airy", "normal", "compact"] = Field(description="How tightly the text is packed")
+    photo: Literal["none", "round", "square"] = Field(description="Photo of the candidate and its shape")
+    two_columns: bool = Field(description="The page is laid out in two columns (e.g. a sidebar)")
+    description: str = Field(description="One sentence in French describing this style for the candidate")
+
+
+class ExampleStyleResponse(BaseModel):
+    style: ExampleStyle
+    preview: str = Field(description="Small JPEG of the example's first page, as a data: URL")
+    notes: list[str]
